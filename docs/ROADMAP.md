@@ -24,8 +24,8 @@
 | 0   | Project setup & authentication                   | ✅     |
 | 1   | Engineering foundations & design system          | ✅     |
 | 2   | Mess & membership                                | ✅     |
-| 3   | Billing months                                   | 🔜     |
-| 4   | Meals & daily menu                               | ⬜     |
+| 3   | Billing months                                   | ✅     |
+| 4   | Meals & daily menu                               | 🔜     |
 | 5   | Bazar (groceries)                                | ⬜     |
 | 6   | Deposits                                         | ⬜     |
 | 7   | Rooms, staff, shared expenses & charges          | ⬜     |
@@ -118,27 +118,27 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 3 — Billing months 🔜
+## Phase 3 — Billing months ✅
 
 ### Backend
 
-- [ ] Month lifecycle: `OPEN → CLOSING → CLOSED` (BUSINESS_RULES §3). Only **one** OPEN month per mess.
-- [ ] Month dates follow `monthStartDay` (limit it to 1–28)
-- [ ] `GET /messes/:messId/months`, `GET /months/:monthId`, `PATCH` (assign the month's manager)
-- [ ] A `assertMonthEditable()` guard used by every money and meal mutation (`MONTH_CLOSED` error)
-- [ ] Tests: date math across month and year boundaries, start days such as 5 → 4
+- [x] Month lifecycle: `OPEN → CLOSING → CLOSED` (BUSINESS_RULES §3). Months open by themselves; an ended month stays OPEN until closed, and months close in order (the close/reopen endpoints come with Phase 8)
+- [x] Month dates follow `monthStartDay` (1–28), including bridging months when the start day changes
+- [x] `GET /messes/:messId/months`, `/months/current`, `/months/:monthId`, `PATCH /months/:monthId/manager`
+- [x] `monthForDate()` + `assertMonthEditable()` guards for every money and meal mutation (`MONTH_CLOSED`, `DATE_OUTSIDE_MONTHS`)
+- [x] Tests: date math across month and year boundaries, start days such as 5 → 4, every start-day change, mess timezone
 
 ### Frontend
 
-- [ ] Month picker shared by every money and meal screen (stored in the URL with nuqs: `?month=2026-10`)
-- [ ] Month status badge; read-only mode for CLOSING and CLOSED months
-- [ ] Month manager assignment (ADMIN)
+- [x] Month picker shared by every money and meal screen (`<MonthPicker>` + `useSelectedMonth()`, stored in the URL: `?month=2026-10`)
+- [x] Month status badge ("Waiting to close" for ended months); `<MonthReadOnlyBanner>` + `isMonthEditable()` for read-only screens
+- [x] Months page with the current month, months waiting to close, history, and month manager assignment (ADMIN)
 
 **Done when:** months are created correctly for any start day, and edits to a non-OPEN month are rejected by the API and disabled in the UI.
 
 ---
 
-## Phase 4 — Meals & daily menu
+## Phase 4 — Meals & daily menu 🔜
 
 ### Backend
 
