@@ -4,6 +4,8 @@ REST API for **Messora** — a multi-tenant mess management platform (meals, baz
 
 **Stack:** Express 5 · TypeScript · Prisma 6 · PostgreSQL · Zod 4 · Brevo (email)
 
+**Docs:** [Roadmap](docs/ROADMAP.md) · [Business rules](docs/BUSINESS_RULES.md) · [Backend guide](docs/BACKEND_GUIDE.md)
+
 ## Getting started
 
 ```bash
