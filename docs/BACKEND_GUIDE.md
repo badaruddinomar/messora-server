@@ -79,7 +79,13 @@ Planned modules: `auth`, `users`, `messes`, `members`, `invitations`, `rooms`, `
 ## 7. Background jobs & realtime
 
 - **BullMQ** queues (Redis): `notifications`, `meals` (daily generation), `reminders`. Jobs must be **idempotent** (safe to run twice) and use a deterministic `jobId` where possible.
-- The worker runs as a separate process (`src/worker.ts`) that shares services with the API.
+- The worker runs as a separate process (`src/worker.ts`, `npm run worker`) that shares services with the API.
+  Queue names, job names and the Redis connection live in `src/jobs/queues.ts`; each job's logic is a plain
+  function in `src/jobs/*.job.ts` so it can be tested without Redis.
+- Schedules are registered with `queue.upsertJobScheduler(...)` when the worker starts, so restarts never duplicate
+  them. `meals/generate-meals` runs hourly (each mess's midnight falls on a different UTC hour).
+- Anything a job does must also happen on demand when it's missing (e.g. opening a day generates its meals), so the
+  app stays correct while the worker is down.
 - **Socket.IO**: authenticated with the access token; rooms `user:<id>` and `mess:<id>`. Services emit events after the database transaction commits.
 
 ## 8. Testing

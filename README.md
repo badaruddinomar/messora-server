@@ -13,7 +13,11 @@ npm install
 cp .env.example .env        # then fill in values
 npm run db:migrate          # create tables
 npm run dev                 # http://localhost:5000
+npm run dev:worker          # background jobs (needs Redis at REDIS_URL)
 ```
+
+The API works without the worker: opening a day generates its meals on demand. The worker adds the hourly
+job that opens new months and creates today's and tomorrow's meals for every mess.
 
 Leave `BREVO_API_KEY` empty in development and emails (OTP codes) are printed to the console.
 
@@ -33,7 +37,9 @@ npm run test:coverage    # with a coverage report
 | Script                        | What it does                            |
 | ----------------------------- | --------------------------------------- |
 | `npm run dev`                 | Start with hot reload (tsx)             |
+| `npm run dev:worker`          | Start the job worker with hot reload    |
 | `npm run build` / `npm start` | Compile to `dist/` and run              |
+| `npm run worker`              | Run the compiled job worker             |
 | `npm run typecheck`           | Type-check without emitting             |
 | `npm run lint` / `format`     | ESLint / Prettier                       |
 | `npm test`                    | Unit + integration tests (Vitest)       |

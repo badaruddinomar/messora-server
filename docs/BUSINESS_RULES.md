@@ -53,7 +53,8 @@ Effective roles: **ADMIN**, **MANAGER**, **MONTH MANAGER** (the member set as `M
   a closed month go into a later month as an `ADJUSTMENT` charge, with a description that points back to the
   original month.
 - Every meal or money record belongs to the month whose date range contains its date. Dates before the first month or
-  after the current month are rejected (`DATE_OUTSIDE_MONTHS`).
+  more than **7 days after today** are rejected (`DATE_OUTSIDE_MONTHS`). The 7-day planning window means next month
+  opens up to a week early, so members can plan meals across the month boundary.
 - **Changing the start day** applies from the next month that opens. That month starts the day after the previous one
   ends, and runs until the next new start day that is in a later calendar month and at least 14 days away, so there is
   no overlap, no gap and no stub month. Example: months on the 1st, switched to the 5th → November runs Nov 1 – Dec 4,
@@ -68,6 +69,20 @@ Effective roles: **ADMIN**, **MANAGER**, **MONTH MANAGER** (the member set as `M
 - Entries are generated for every ACTIVE member each day: `quantity = 1` if `defaultMealOn`, else `0`, and `0` inside a `MealOffPeriod`. Generation is an idempotent upsert, so running it twice changes nothing and never overwrites an edit.
 - **Cutoff:** a member may change their own entry for a slot until `cutoffTime` (mess timezone) on that meal's date. A slot without a cutoff locks at the start of that day. After the cutoff, only managers can change it.
 - Guest meals require `allowGuestMeal`. Guest meals are charged to the member who adds them.
+- Members edit only their own meals, and only if `allowMemberMealEdit` is on. Managers edit anyone's meals on any day
+  of an `OPEN` month; the member gets a `MEAL_UPDATED_BY_MANAGER` notification and the change is audited.
+- Meal counts go in half steps (0–5 own, 0–10 guests). A bulk change is all-or-nothing.
+- **Usual meals** (`defaultMealOn`): switching it changes the upcoming entries still at the old usual amount (custom
+  amounts and meal-off days stay as they are).
+- **Meal-off periods** (at most 90 days, no overlaps): members start them today or later and they only change meals
+  still before their cutoff; managers can also cover earlier days of open months. Cancelling one that has started
+  ends it yesterday, and the upcoming days go back to the usual meals.
+- **Meal slots**: a mess keeps at least one active slot. Removing a slot that already has meals archives it (past
+  months keep their numbers) and drops its upcoming entries.
+- **Meal requests** go to every manager (`MEAL_REQUEST`) and are for today or later. Managers approve or reject them
+  once (`MEAL_REQUEST_RESPONDED`); members can withdraw their own pending requests.
+- **Daily menu**: one per slot per day, posted by managers. A new menu for today or later notifies every active
+  member (`MENU_POSTED`); edits don't.
 
 ## 5. Meal rate
 

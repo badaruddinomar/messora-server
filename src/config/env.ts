@@ -8,6 +8,8 @@ const envSchema = z.object({
   CLIENT_URL: z.url(),
 
   DATABASE_URL: z.string().min(1),
+  /** Redis for background jobs (BullMQ). Only the worker connects to it. */
+  REDIS_URL: z.string().default("redis://localhost:6379"),
 
   JWT_ACCESS_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL: z.string().default("15m"),
