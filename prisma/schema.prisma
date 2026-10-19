@@ -1,0 +1,1067 @@
+// =====================================================================
+// Mess Management System — Production Prisma Schema (PostgreSQL)
+// ---------------------------------------------------------------------
+// - Multi-tenant: every tenant-scoped row carries messId
+// - Money: Decimal(12,2) | Meal count: Decimal(5,2) | Meal rate: Decimal(10,4)
+// - Dates that are "calendar days" use @db.Date; timestamps use timestamptz
+// - Modules: Auth · Tenant · Rooms · Month · Meals · Menu · Bazar ·
+//            Deposits · Staff/Expenses · Charges · Settlement · Fund ·
+//            Chat (group + direct) · Notifications · Notice · Audit
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================================
+// ENUMS
+// =====================================================================
+
+// ---------- Auth ----------
+enum PlatformRole {
+  USER
+  SUPER_ADMIN // you — platform owner
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum VerificationPurpose {
+  PHONE_VERIFY
+  EMAIL_VERIFY
+  PASSWORD_RESET
+  LOGIN_OTP
+}
+
+enum DevicePlatform {
+  ANDROID
+  IOS
+  WEB
+}
+
+// ---------- Tenant ----------
+enum MessGender {
+  MALE
+  FEMALE
+  MIXED
+}
+
+enum MessRole {
+  ADMIN   // mess owner/creator — full control
+  MANAGER // manages meals, bazar, deposits
+  MEMBER
+}
+
+enum MemberStatus {
+  PENDING   // requested via joinCode, waiting approval
+  ACTIVE
+  SUSPENDED
+  LEFT
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+// ---------- Month / Money ----------
+enum MonthStatus {
+  OPEN
+  CLOSING // calculation running / under review
+  CLOSED  // locked — no edits allowed
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  ROCKET
+  BANK
+  OTHER
+}
+
+enum PaidFrom {
+  MESS_FUND  // manager paid from collected deposits
+  OWN_POCKET // member paid himself → credited to his balance
+}
+
+enum ExpenseCategory {
+  ELECTRICITY
+  GAS
+  WATER
+  INTERNET
+  COOK_SALARY
+  MAID_SALARY
+  CLEANING
+  MAINTENANCE
+  HOUSE_RENT
+  UTENSILS
+  OTHER
+}
+
+enum SplitType {
+  EQUAL   // equally among active members of the month
+  BY_MEAL // proportional to meal count
+  CUSTOM  // explicit ExpenseShare rows
+}
+
+enum ChargeType {
+  SEAT_RENT
+  FINE
+  PERSONAL
+  ADJUSTMENT // can be negative (discount / correction)
+}
+
+enum StaffRole {
+  COOK
+  MAID
+  GUARD
+  OTHER
+}
+
+enum SettlementDirection {
+  MEMBER_TO_MESS // member clears his due
+  MESS_TO_MEMBER // mess refunds extra balance
+}
+
+enum HandoverStatus {
+  PENDING
+  CONFIRMED
+  DISPUTED
+}
+
+// ---------- Chat ----------
+enum ConversationType {
+  MESS_GROUP // one per mess, all active members
+  DIRECT     // 1-to-1 between two members of the same mess
+}
+
+enum ParticipantRole {
+  ADMIN
+  MEMBER
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  AUDIO  // voice message
+  SYSTEM // "Rahim joined the mess", "Month closed"
+}
+
+// ---------- Notifications ----------
+enum NotificationType {
+  JOIN_REQUEST
+  JOIN_APPROVED
+  JOIN_REJECTED
+  INVITATION_RECEIVED
+  ROLE_CHANGED
+  MEAL_REMINDER
+  MEAL_UPDATED_BY_MANAGER
+  MEAL_REQUEST
+  MEAL_REQUEST_RESPONDED
+  MENU_POSTED
+  BAZAR_DUTY_REMINDER
+  BAZAR_SUBMITTED
+  BAZAR_APPROVED
+  BAZAR_REJECTED
+  DEPOSIT_SUBMITTED
+  DEPOSIT_APPROVED
+  DEPOSIT_REJECTED
+  EXPENSE_ADDED
+  CHARGE_ADDED
+  MONTH_CLOSED
+  DUE_REMINDER
+  SETTLEMENT_RECORDED
+  FUND_HANDOVER
+  NOTICE_POSTED
+  NEW_MESSAGE
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+  EMAIL
+  SMS
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// =====================================================================
+// AUTH
+// =====================================================================
+
+model User {
+  id              String       @id @default(uuid())
+  name            String
+  phone           String       @unique
+  email           String?      @unique
+  passwordHash    String
+  avatarUrl       String?
+  platformRole    PlatformRole @default(USER)
+  status          UserStatus   @default(ACTIVE)
+  language        String       @default("bn")
+  phoneVerifiedAt DateTime?
+  emailVerifiedAt DateTime?
+  lastSeenAt      DateTime? // online / last seen in chat
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  memberships       MessMember[]
+  messesCreated     Mess[]                   @relation("MessCreator")
+  refreshTokens     RefreshToken[]
+  verificationCodes VerificationCode[]
+  pushDevices       PushDevice[]
+  invitationsSent   MessInvitation[]         @relation("InvitationSender")
+  invitationsTaken  MessInvitation[]         @relation("InvitationAcceptor")
+  chatParticipants  ConversationParticipant[]
+  messagesSent      Message[]                @relation("MessageSender")
+  reactions         MessageReaction[]
+  hiddenMessages    MessageHidden[]
+  notifications     Notification[]
+  notificationPrefs NotificationPreference[]
+
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  familyId  String // rotate within a family; reuse → revoke whole family
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+// OTP for phone/email verify, password reset, OTP login
+model VerificationCode {
+  id         String              @id @default(uuid())
+  userId     String? // null during signup before user exists
+  target     String // phone or email
+  purpose    VerificationPurpose
+  codeHash   String
+  attempts   Int                 @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime            @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([target, purpose, createdAt])
+  @@index([userId])
+}
+
+// FCM / APNs / Web push tokens
+model PushDevice {
+  id         String         @id @default(uuid())
+  userId     String
+  token      String         @unique
+  platform   DevicePlatform
+  lastUsedAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// =====================================================================
+// TENANT
+// =====================================================================
+
+model Mess {
+  id            String     @id @default(uuid())
+  name          String
+  slug          String     @unique
+  address       String?
+  logoUrl       String?
+  gender        MessGender @default(MALE)
+  joinCode      String     @unique
+  currency      String     @default("BDT")
+  timezone      String     @default("Asia/Dhaka")
+  monthStartDay Int        @default(1) // some messes run 5th → 4th
+  isActive      Boolean    @default(true)
+  createdById   String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  createdBy User @relation("MessCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  settings       MessSetting?
+  members        MessMember[]
+  invitations    MessInvitation[]
+  rooms          Room[]
+  seats          Seat[]
+  mealSlots      MealSlot[]
+  months         MessMonth[]
+  mealEntries    MealEntry[]
+  mealOffs       MealOffPeriod[]
+  mealRequests   MealRequest[]
+  dailyMenus     DailyMenu[]
+  bazarSchedules BazarSchedule[]
+  bazars         Bazar[]
+  deposits       Deposit[]
+  staff          MessStaff[]
+  expenses       SharedExpense[]
+  charges        MemberCharge[]
+  settlements    SettlementPayment[]
+  fundHandovers  FundHandover[]
+  conversations  Conversation[]
+  notifications  Notification[]
+  notices        Notice[]
+  auditLogs      AuditLog[]
+
+  @@index([isActive])
+}
+
+// Per-mess rules — 1:1 with Mess
+model MessSetting {
+  id                     String   @id @default(uuid())
+  messId                 String   @unique
+  autoGenerateMeals      Boolean  @default(true) // cron creates MealEntry daily
+  allowMemberMealEdit    Boolean  @default(true) // before slot cutoff
+  allowGuestMeal         Boolean  @default(true)
+  requireBazarApproval   Boolean  @default(true)
+  requireDepositApproval Boolean  @default(true)
+  prorateSeatRent        Boolean  @default(true) // mid-month join/leave
+  mealRateDecimals       Int      @default(2)
+  dueReminderDay         Int? // day of month to send due reminder
+  updatedAt              DateTime @updatedAt
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+}
+
+model MessMember {
+  id            String       @id @default(uuid())
+  messId        String
+  userId        String
+  role          MessRole     @default(MEMBER)
+  status        MemberStatus @default(PENDING)
+  seatId        String?      @unique
+  defaultMealOn Boolean      @default(true)
+  joinedAt      DateTime?    @db.Date
+  leftAt        DateTime?    @db.Date
+  leaveReason   String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  mess Mess  @relation(fields: [messId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seat Seat? @relation(fields: [seatId], references: [id], onDelete: SetNull)
+
+  managedMonths       MessMonth[]          @relation("MonthManager")
+  mealEntries         MealEntry[]
+  mealOffs            MealOffPeriod[]
+  mealRequests        MealRequest[]        @relation("MealRequester")
+  mealRequestsHandled MealRequest[]        @relation("MealResponder")
+  bazarDuties         BazarSchedule[]
+  bazarsShopped       Bazar[]              @relation("BazarShopper")
+  bazarsApproved      Bazar[]              @relation("BazarApprover")
+  deposits            Deposit[]            @relation("DepositMember")
+  depositsReceived    Deposit[]            @relation("DepositReceiver")
+  expensesPaid        SharedExpense[]      @relation("ExpensePayer")
+  expenseShares       ExpenseShare[]
+  charges             MemberCharge[]
+  summaries           MemberMonthSummary[]
+  settlements         SettlementPayment[]  @relation("SettlementMember")
+  settlementsRecorded SettlementPayment[]  @relation("SettlementRecorder")
+  handoversGiven      FundHandover[]       @relation("HandoverFrom")
+  handoversReceived   FundHandover[]       @relation("HandoverTo")
+
+  @@unique([messId, userId])
+  @@index([messId, status])
+  @@index([userId])
+}
+
+// Invite by phone/email (alternative to joinCode)
+model MessInvitation {
+  id           String           @id @default(uuid())
+  messId       String
+  invitedById  String
+  phone        String?
+  email        String?
+  role         MessRole         @default(MEMBER)
+  tokenHash    String           @unique
+  status       InvitationStatus @default(PENDING)
+  expiresAt    DateTime
+  acceptedById String?
+  respondedAt  DateTime?
+  createdAt    DateTime         @default(now())
+
+  mess       Mess  @relation(fields: [messId], references: [id], onDelete: Cascade)
+  invitedBy  User  @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Cascade)
+  acceptedBy User? @relation("InvitationAcceptor", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([messId, status])
+  @@index([phone])
+  @@index([email])
+}
+
+// =====================================================================
+// ROOMS & SEATS
+// =====================================================================
+
+model Room {
+  id        String   @id @default(uuid())
+  messId    String
+  name      String
+  floor     String?
+  createdAt DateTime @default(now())
+
+  mess  Mess   @relation(fields: [messId], references: [id], onDelete: Cascade)
+  seats Seat[]
+
+  @@unique([messId, name])
+}
+
+model Seat {
+  id          String  @id @default(uuid())
+  messId      String
+  roomId      String
+  label       String
+  monthlyRent Decimal @db.Decimal(12, 2)
+  isActive    Boolean @default(true)
+
+  mess   Mess        @relation(fields: [messId], references: [id], onDelete: Cascade)
+  room   Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  member MessMember?
+
+  @@unique([roomId, label])
+  @@index([messId])
+}
+
+// =====================================================================
+// MONTH (BILLING CYCLE)
+// =====================================================================
+
+model MessMonth {
+  id        String      @id @default(uuid())
+  messId    String
+  year      Int
+  month     Int // 1-12
+  startDate DateTime    @db.Date
+  endDate   DateTime    @db.Date
+  status    MonthStatus @default(OPEN)
+  managerId String? // rotating manager for this month
+
+  // Snapshot filled on close
+  totalBazar    Decimal?  @db.Decimal(12, 2)
+  totalMeals    Decimal?  @db.Decimal(10, 2) // weighted
+  mealRate      Decimal?  @db.Decimal(10, 4)
+  totalExpenses Decimal?  @db.Decimal(12, 2)
+  openingCash   Decimal?  @db.Decimal(12, 2) // cash in hand at start
+  closingCash   Decimal?  @db.Decimal(12, 2) // cash in hand at end
+  closedAt      DateTime?
+  closedById    String? // User.id
+  version       Int       @default(0) // optimistic lock while closing
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mess    Mess        @relation(fields: [messId], references: [id], onDelete: Cascade)
+  manager MessMember? @relation("MonthManager", fields: [managerId], references: [id], onDelete: SetNull)
+
+  mealEntries    MealEntry[]
+  bazarSchedules BazarSchedule[]
+  bazars         Bazar[]
+  deposits       Deposit[]
+  expenses       SharedExpense[]
+  charges        MemberCharge[]
+  summaries      MemberMonthSummary[]
+  settlements    SettlementPayment[]
+  handovers      FundHandover[]
+
+  @@unique([messId, year, month])
+  @@index([messId, status])
+}
+
+// =====================================================================
+// MEALS & MENU
+// =====================================================================
+
+model MealSlot {
+  id         String  @id @default(uuid())
+  messId     String
+  name       String // Breakfast / Lunch / Dinner
+  weight     Decimal @default(1) @db.Decimal(4, 2)
+  cutoffTime String? // "HH:mm"
+  sortOrder  Int     @default(0)
+  isActive   Boolean @default(true)
+
+  mess         Mess          @relation(fields: [messId], references: [id], onDelete: Cascade)
+  mealEntries  MealEntry[]
+  dailyMenus   DailyMenu[]
+  mealRequests MealRequest[]
+
+  @@unique([messId, name])
+}
+
+model MealEntry {
+  id            String   @id @default(uuid())
+  messId        String
+  monthId       String
+  memberId      String
+  slotId        String
+  date          DateTime @db.Date
+  quantity      Decimal  @default(1) @db.Decimal(5, 2) // 0 = off
+  guestQuantity Decimal  @default(0) @db.Decimal(5, 2)
+  note          String?
+  updatedById   String? // User.id
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  mess   Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month  MessMonth  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  member MessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  slot   MealSlot   @relation(fields: [slotId], references: [id], onDelete: Restrict)
+
+  @@unique([memberId, slotId, date])
+  @@index([messId, date])
+  @@index([monthId, memberId])
+}
+
+model MealOffPeriod {
+  id        String   @id @default(uuid())
+  messId    String
+  memberId  String
+  fromDate  DateTime @db.Date
+  toDate    DateTime @db.Date
+  reason    String?
+  createdAt DateTime @default(now())
+
+  mess   Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  member MessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, fromDate, toDate])
+  @@index([messId])
+}
+
+// What's cooking today
+model DailyMenu {
+  id          String   @id @default(uuid())
+  messId      String
+  slotId      String
+  date        DateTime @db.Date
+  items       String // "Rice, Dal, Chicken curry"
+  note        String?
+  createdById String // User.id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mess Mess     @relation(fields: [messId], references: [id], onDelete: Cascade)
+  slot MealSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([messId, date, slotId])
+}
+
+// "Kal fish khete chai", "Ajke late dinner"
+model MealRequest {
+  id            String         @id @default(uuid())
+  messId        String
+  memberId      String
+  slotId        String?
+  date          DateTime       @db.Date
+  request       String
+  status        ApprovalStatus @default(PENDING)
+  respondedById String?
+  response      String?
+  respondedAt   DateTime?
+  createdAt     DateTime       @default(now())
+
+  mess        Mess        @relation(fields: [messId], references: [id], onDelete: Cascade)
+  member      MessMember  @relation("MealRequester", fields: [memberId], references: [id], onDelete: Cascade)
+  slot        MealSlot?   @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  respondedBy MessMember? @relation("MealResponder", fields: [respondedById], references: [id], onDelete: SetNull)
+
+  @@index([messId, date, status])
+}
+
+// =====================================================================
+// BAZAR
+// =====================================================================
+
+model BazarSchedule {
+  id        String   @id @default(uuid())
+  messId    String
+  monthId   String
+  memberId  String
+  date      DateTime @db.Date
+  isDone    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  mess   Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month  MessMonth  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  member MessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([messId, date, memberId])
+  @@index([monthId])
+}
+
+model Bazar {
+  id              String         @id @default(uuid())
+  messId          String
+  monthId         String
+  shopperId       String
+  date            DateTime       @db.Date
+  totalAmount     Decimal        @db.Decimal(12, 2)
+  paidFrom        PaidFrom       @default(MESS_FUND)
+  receiptUrl      String?
+  note            String?
+  status          ApprovalStatus @default(PENDING)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdById     String // User.id
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  mess       Mess        @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month      MessMonth   @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  shopper    MessMember  @relation("BazarShopper", fields: [shopperId], references: [id], onDelete: Restrict)
+  approvedBy MessMember? @relation("BazarApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  items      BazarItem[]
+
+  @@index([monthId, status])
+  @@index([messId, date])
+}
+
+model BazarItem {
+  id         String   @id @default(uuid())
+  bazarId    String
+  name       String
+  quantity   Decimal? @db.Decimal(10, 3)
+  unit       String?
+  totalPrice Decimal  @db.Decimal(12, 2)
+
+  bazar Bazar @relation(fields: [bazarId], references: [id], onDelete: Cascade)
+
+  @@index([bazarId])
+}
+
+// =====================================================================
+// DEPOSITS
+// =====================================================================
+
+model Deposit {
+  id              String         @id @default(uuid())
+  messId          String
+  monthId         String
+  memberId        String
+  amount          Decimal        @db.Decimal(12, 2)
+  method          PaymentMethod  @default(CASH)
+  transactionRef  String?
+  status          ApprovalStatus @default(PENDING)
+  receivedById    String?
+  rejectionReason String?
+  note            String?
+  depositedAt     DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  mess       Mess        @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month      MessMonth   @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  member     MessMember  @relation("DepositMember", fields: [memberId], references: [id], onDelete: Restrict)
+  receivedBy MessMember? @relation("DepositReceiver", fields: [receivedById], references: [id], onDelete: SetNull)
+
+  @@index([monthId, memberId])
+  @@index([messId, status])
+}
+
+// =====================================================================
+// STAFF, SHARED EXPENSES, CHARGES
+// =====================================================================
+
+model MessStaff {
+  id            String    @id @default(uuid())
+  messId        String
+  name          String
+  phone         String?
+  role          StaffRole
+  monthlySalary Decimal   @db.Decimal(12, 2)
+  isActive      Boolean   @default(true)
+  joinedAt      DateTime  @default(now())
+
+  mess     Mess            @relation(fields: [messId], references: [id], onDelete: Cascade)
+  payments SharedExpense[]
+
+  @@index([messId])
+}
+
+model SharedExpense {
+  id             String          @id @default(uuid())
+  messId         String
+  monthId        String
+  category       ExpenseCategory
+  title          String
+  amount         Decimal         @db.Decimal(12, 2)
+  splitType      SplitType       @default(EQUAL)
+  paidFrom       PaidFrom        @default(MESS_FUND)
+  paidByMemberId String? // when OWN_POCKET
+  staffId        String? // when salary
+  billDate       DateTime        @db.Date
+  receiptUrl     String?
+  status         ApprovalStatus  @default(APPROVED)
+  createdById    String // User.id
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  mess   Mess           @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month  MessMonth      @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  paidBy MessMember?    @relation("ExpensePayer", fields: [paidByMemberId], references: [id], onDelete: SetNull)
+  staff  MessStaff?     @relation(fields: [staffId], references: [id], onDelete: SetNull)
+  shares ExpenseShare[]
+
+  @@index([monthId, category])
+  @@index([messId])
+}
+
+model ExpenseShare {
+  id        String  @id @default(uuid())
+  expenseId String
+  memberId  String
+  amount    Decimal @db.Decimal(12, 2)
+
+  expense SharedExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  member  MessMember    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([expenseId, memberId])
+}
+
+model MemberCharge {
+  id          String     @id @default(uuid())
+  messId      String
+  monthId     String
+  memberId    String
+  type        ChargeType
+  amount      Decimal    @db.Decimal(12, 2)
+  description String?
+  // Proration (mid-month join/leave): rent × days(periodFrom..periodTo) / days(month)
+  periodFrom  DateTime?  @db.Date
+  periodTo    DateTime?  @db.Date
+  isProrated  Boolean    @default(false)
+  createdById String // User.id
+  createdAt   DateTime   @default(now())
+
+  mess   Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month  MessMonth  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  member MessMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([monthId, memberId])
+  @@index([messId])
+}
+
+// =====================================================================
+// SETTLEMENT & FUND
+// =====================================================================
+
+// Snapshot per member on month close. Never recalc a CLOSED month.
+model MemberMonthSummary {
+  id             String    @id @default(uuid())
+  monthId        String
+  memberId       String
+  totalMeals     Decimal   @db.Decimal(10, 2)
+  mealCost       Decimal   @db.Decimal(12, 2)
+  sharedCost     Decimal   @db.Decimal(12, 2)
+  chargeTotal    Decimal   @db.Decimal(12, 2)
+  totalDeposit   Decimal   @db.Decimal(12, 2) // approved deposits + own-pocket spend
+  openingBalance Decimal   @db.Decimal(12, 2) // previous month's closingBalance - settled
+  closingBalance Decimal   @db.Decimal(12, 2) // + = mess owes member, - = member owes mess
+  settledAmount  Decimal   @default(0) @db.Decimal(12, 2) // sum of SettlementPayment
+  isSettled      Boolean   @default(false)
+  settledAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  month       MessMonth           @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  member      MessMember          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  settlements SettlementPayment[]
+
+  @@unique([monthId, memberId])
+}
+
+// Actual money movement after a month closes (due paid / refund given)
+model SettlementPayment {
+  id             String              @id @default(uuid())
+  messId         String
+  monthId        String
+  summaryId      String
+  memberId       String
+  direction      SettlementDirection
+  amount         Decimal             @db.Decimal(12, 2)
+  method         PaymentMethod       @default(CASH)
+  transactionRef String?
+  note           String?
+  recordedById   String
+  paidAt         DateTime            @default(now())
+  createdAt      DateTime            @default(now())
+
+  mess       Mess               @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month      MessMonth          @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  summary    MemberMonthSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+  member     MessMember         @relation("SettlementMember", fields: [memberId], references: [id], onDelete: Restrict)
+  recordedBy MessMember         @relation("SettlementRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([summaryId])
+  @@index([messId, monthId])
+}
+
+// Old manager hands cash to new manager at month change
+model FundHandover {
+  id             String         @id @default(uuid())
+  messId         String
+  monthId        String // the month being handed over FROM
+  fromMemberId   String
+  toMemberId     String
+  expectedAmount Decimal        @db.Decimal(12, 2) // system-calculated cash in hand
+  handedAmount   Decimal        @db.Decimal(12, 2) // actually handed
+  status         HandoverStatus @default(PENDING)
+  note           String?
+  confirmedAt    DateTime?
+  createdAt      DateTime       @default(now())
+
+  mess       Mess       @relation(fields: [messId], references: [id], onDelete: Cascade)
+  month      MessMonth  @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  fromMember MessMember @relation("HandoverFrom", fields: [fromMemberId], references: [id], onDelete: Restrict)
+  toMember   MessMember @relation("HandoverTo", fields: [toMemberId], references: [id], onDelete: Restrict)
+
+  @@index([messId, monthId])
+}
+
+// =====================================================================
+// CHAT — mess group chat + 1-to-1 direct chat
+// =====================================================================
+
+model Conversation {
+  id            String           @id @default(uuid())
+  messId        String
+  type          ConversationType
+  // Uniqueness key:
+  //   MESS_GROUP → "group:<messId>"
+  //   DIRECT     → "dm:<messId>:<smallerUserId>:<largerUserId>"
+  uniqueKey     String           @unique
+  title         String? // group only
+  avatarUrl     String?
+  lastMessageId String?          @unique
+  lastMessageAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  mess         Mess                      @relation(fields: [messId], references: [id], onDelete: Cascade)
+  lastMessage  Message?                  @relation("ConversationLastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     Message[]                 @relation("ConversationMessages")
+
+  @@index([messId, type])
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id                String          @id @default(uuid())
+  conversationId    String
+  userId            String
+  role              ParticipantRole @default(MEMBER)
+  lastReadMessageId String? // for unread count + "seen"
+  lastReadAt        DateTime?
+  mutedUntil        DateTime?
+  isArchived        Boolean         @default(false)
+  isPinned          Boolean         @default(false)
+  joinedAt          DateTime        @default(now())
+  leftAt            DateTime? // left mess → read-only history
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId, leftAt])
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  senderId       String? // null for SYSTEM
+  type           MessageType @default(TEXT)
+  content        String?
+  replyToId      String?
+  metadata       Json? // e.g. { "event": "MONTH_CLOSED", "monthId": "..." }
+  editedAt       DateTime?
+  deletedAt      DateTime? // "deleted for everyone"
+  createdAt      DateTime    @default(now())
+
+  conversation  Conversation      @relation("ConversationMessages", fields: [conversationId], references: [id], onDelete: Cascade)
+  sender        User?             @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  replyTo       Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies       Message[]         @relation("MessageReplies")
+  lastMessageOf Conversation?     @relation("ConversationLastMessage")
+  attachments   MessageAttachment[]
+  reactions     MessageReaction[]
+  hiddenFor     MessageHidden[]
+
+  @@index([conversationId, createdAt(sort: Desc), id])
+  @@index([senderId])
+}
+
+model MessageAttachment {
+  id          String   @id @default(uuid())
+  messageId   String
+  url         String
+  fileName    String?
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  durationSec Int? // voice message length
+  createdAt   DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+// "Delete for me"
+model MessageHidden {
+  messageId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId])
+  @@index([userId])
+}
+
+// =====================================================================
+// NOTIFICATIONS
+// =====================================================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String // recipient
+  messId    String?
+  type      NotificationType
+  title     String
+  body      String
+  entity    String? // "Bazar", "Deposit", "Message" ...
+  entityId  String? // deep link target
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mess       Mess?                  @relation(fields: [messId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([messId])
+}
+
+// One row per channel attempt — worker (BullMQ) picks PENDING rows
+model NotificationDelivery {
+  id             String              @id @default(uuid())
+  notificationId String
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(PENDING)
+  attempts       Int                 @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, createdAt])
+}
+
+// Opt-out matrix. No row = default ON.
+model NotificationPreference {
+  id      String              @id @default(uuid())
+  userId  String
+  type    NotificationType
+  channel NotificationChannel
+  enabled Boolean             @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+}
+
+// =====================================================================
+// NOTICE & AUDIT
+// =====================================================================
+
+model Notice {
+  id          String   @id @default(uuid())
+  messId      String
+  title       String
+  body        String
+  isPinned    Boolean  @default(false)
+  createdById String // User.id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@index([messId, isPinned])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  messId    String
+  actorId   String // User.id
+  action    String // "MEAL_UPDATED", "BAZAR_APPROVED", "MONTH_CLOSED"
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  mess Mess @relation(fields: [messId], references: [id], onDelete: Cascade)
+
+  @@index([messId, createdAt])
+  @@index([entity, entityId])
+}
