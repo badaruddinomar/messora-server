@@ -25,8 +25,8 @@
 | 1   | Engineering foundations & design system          | ✅     |
 | 2   | Mess & membership                                | ✅     |
 | 3   | Billing months                                   | ✅     |
-| 4   | Meals & daily menu                               | 🔜     |
-| 5   | Bazar (groceries)                                | ⬜     |
+| 4   | Meals & daily menu                               | ✅     |
+| 5   | Bazar (groceries)                                | 🔜     |
 | 6   | Deposits                                         | ⬜     |
 | 7   | Rooms, staff, shared expenses & charges          | ⬜     |
 | 8   | Month close & settlement                         | ⬜     |
@@ -138,30 +138,32 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 4 — Meals & daily menu 🔜
+## Phase 4 — Meals & daily menu ✅
 
 ### Backend
 
-- [ ] Meal slots CRUD (name, weight, cutoff time, order, active)
-- [ ] Meal entries:
-  - [ ] `GET /messes/:messId/meals?date=` (one day, all members) and `?from=&to=&memberId=` (range)
-  - [ ] `PUT /meals` bulk upsert `{ memberId, slotId, date, quantity, guestQuantity, note }`
-  - [ ] Members can edit their own meals before the slot cutoff; managers can edit anyone's (BUSINESS_RULES §4)
-- [ ] Generate entries **idempotently** (upsert on `memberId+slotId+date`):
-  - [ ] a daily job (BullMQ + Redis) creates tomorrow's entries from `defaultMealOn` and `MealOffPeriod`
-  - [ ] generate on demand when a day is opened, so a missed job never shows an empty day
-- [ ] Meal off periods: create, list, delete (also zero any existing future entries)
-- [ ] Meal requests: create, respond (manager), list
-- [ ] Daily menu: upsert per date and slot; `MENU_POSTED` notification
-- [ ] Notify the member when a manager changes their meals (`MEAL_UPDATED_BY_MANAGER`)
-- [ ] Tests: cutoff in the mess timezone, generation idempotency, off periods
+- [x] Meal slots CRUD (name, weight, cutoff time, order, active) at `/messes/:messId/meal-slots`, ADMIN only; a slot that was eaten is archived, and a mess keeps at least one
+- [x] Meal entries:
+  - [x] `GET /meals/day?date=` (one day, all members, with cutoffs, menu and totals) and `GET /meals/members/:memberId?from=&to=` (`me` for yourself)
+  - [x] `PUT /meals` bulk upsert `{ memberId, slotId, date, quantity, guestQuantity, note }`, all-or-nothing
+  - [x] Members can edit their own meals before the slot cutoff; managers can edit anyone's (BUSINESS_RULES §4)
+- [x] Generate entries **idempotently** (`createMany` + `skipDuplicates` on `memberId+slotId+date`):
+  - [x] a BullMQ worker (`npm run worker`) runs hourly and creates today's and tomorrow's entries from `defaultMealOn` and `MealOffPeriod`
+  - [x] generate on demand when a day is opened, so a missed job never shows an empty day
+- [x] Planning window: months open up to 7 days early; dated records more than 7 days ahead are rejected
+- [x] Usual meals (`PATCH /meals/preference`) and meal-off periods (`/meals/off`): create, list, cancel or end; upcoming entries follow
+- [x] Meal requests (`/meals/requests`): create, respond (manager), withdraw, list
+- [x] Daily menu (`PUT /meals/menu`): upsert per date and slot; `MENU_POSTED` notification for new menus
+- [x] Notify the member when a manager changes their meals (`MEAL_UPDATED_BY_MANAGER`), and audit it
+- [x] Tests: cutoff in the mess timezone, generation idempotency, off periods, permissions, the hourly job
 
 ### Frontend
 
-- [ ] **My meals** (mobile first): today's slots as large toggles with guest +/−, a countdown to each cutoff, and optimistic updates with rollback on error
-- [ ] **Meal sheet** (manager): members × slots grid for one day, keyboard friendly, sticky header, live totals per slot
-- [ ] Monthly calendar view of a member's meals with totals
-- [ ] Meal-off dialog (date range + reason), meal requests list, today's menu card and menu editor
+- [x] **My meals** (mobile first): each meal as a large toggle with guest +/−, the menu, a countdown to the cutoff, and optimistic updates with rollback on error
+- [x] **Meal sheet** (manager): members × meals grid for one day, keyboard friendly (Enter moves down), sticky member column, live totals, "everyone on/off" per meal
+- [x] Monthly calendar of a member's meals with totals (managers can pick any member)
+- [x] Meal-off dialog (date range + reason) and list, meal requests (new, approve, turn down, withdraw), menu editor, usual-meals switch
+- [x] Meal slots in Settings; today's meals card on the overview; "Meals" in the navigation
 
 **Done when:** toggling a meal feels instant on a phone; the cutoff rules hold on both server and client; the day and month totals match the database.
 
