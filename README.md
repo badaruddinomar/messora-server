@@ -29,14 +29,34 @@ Leave `BREVO_API_KEY` empty in development and emails (OTP codes) are printed to
 ## Project structure
 
 ```
-prisma/schema.prisma        # full data model
+prisma/
+  schema.prisma             # full data model
+  migrations/
 src/
+  server.ts                 # starts the HTTP server, graceful shutdown
+  app.ts                    # express app: global middlewares, routes, error handler
   config/env.ts             # env vars validated with Zod
-  lib/                      # prisma client, Brevo mailer, email templates
-  middlewares/              # auth, validate (Zod), error handler
-  modules/<feature>/        # *.routes / *.controller / *.service / *.schema
+  constants/                # API prefix, cookie names, ...
+  routes/index.ts           # mounts every module router under /api/v1
+  lib/
+    prisma.ts               # Prisma client
+    mail/                   # Brevo mailer + email templates
+  middlewares/              # requireAuth, validate (Zod), error handler
+  modules/
+    auth/
+      auth.routes.ts        # endpoints + per-route middlewares
+      auth.controller.ts    # HTTP layer: read req, call service, send response
+      auth.service.ts       # business logic + database access
+      auth.schema.ts        # Zod request schemas
+      auth.types.ts         # module types
+      auth.cookies.ts       # auth cookie helpers
+      auth.otp.ts           # one-time codes (issue / verify)
+  types/express.d.ts        # req.user typing
   utils/                    # ApiError, sendResponse, crypto helpers
 ```
+
+**Adding a module** (e.g. `mess`): create `src/modules/mess/` with `mess.routes.ts`, `mess.controller.ts`,
+`mess.service.ts` and `mess.schema.ts`, then register it in `src/routes/index.ts`.
 
 ## Auth
 

@@ -1,4 +1,4 @@
-import { env } from "../config/env.js";
+import { env } from "../../config/env.js";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 

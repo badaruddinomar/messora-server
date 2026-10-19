@@ -4,8 +4,9 @@ import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env, isProd } from "./config/env.js";
+import { API_PREFIX } from "./constants/index.js";
 import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
-import authRoutes from "./modules/auth/auth.routes.js";
+import routes from "./routes/index.js";
 
 export const app = express();
 
@@ -20,7 +21,7 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/v1/auth", authRoutes);
+app.use(API_PREFIX, routes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

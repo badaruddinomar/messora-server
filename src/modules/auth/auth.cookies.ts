@@ -1,8 +1,6 @@
 import type { CookieOptions, Response } from "express";
 import { env } from "../../config/env.js";
-
-export const ACCESS_COOKIE = "access_token";
-export const REFRESH_COOKIE = "refresh_token";
+import { API_PREFIX, COOKIES } from "../../constants/index.js";
 
 const base: CookieOptions = {
   httpOnly: true,
@@ -11,14 +9,14 @@ const base: CookieOptions = {
 };
 
 // Refresh token is only ever sent to the auth routes.
-const refreshPath = "/api/v1/auth";
+const refreshPath = `${API_PREFIX}/auth`;
 
 export function setAuthCookies(res: Response, accessToken: string, refreshToken: string, refreshExpiresAt: Date) {
-  res.cookie(ACCESS_COOKIE, accessToken, { ...base, path: "/" });
-  res.cookie(REFRESH_COOKIE, refreshToken, { ...base, path: refreshPath, expires: refreshExpiresAt });
+  res.cookie(COOKIES.ACCESS_TOKEN, accessToken, { ...base, path: "/" });
+  res.cookie(COOKIES.REFRESH_TOKEN, refreshToken, { ...base, path: refreshPath, expires: refreshExpiresAt });
 }
 
 export function clearAuthCookies(res: Response) {
-  res.clearCookie(ACCESS_COOKIE, { ...base, path: "/" });
-  res.clearCookie(REFRESH_COOKIE, { ...base, path: refreshPath });
+  res.clearCookie(COOKIES.ACCESS_TOKEN, { ...base, path: "/" });
+  res.clearCookie(COOKIES.REFRESH_TOKEN, { ...base, path: refreshPath });
 }

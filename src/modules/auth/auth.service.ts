@@ -3,21 +3,14 @@ import jwt, { type SignOptions } from "jsonwebtoken";
 import { UserStatus, VerificationPurpose, type User } from "@prisma/client";
 import { env } from "../../config/env.js";
 import { prisma } from "../../lib/prisma.js";
-import { sendMail } from "../../lib/mail.js";
-import { resetPasswordTemplate, verifyEmailTemplate } from "../../lib/email-templates.js";
+import { resetPasswordTemplate, sendMail, verifyEmailTemplate } from "../../lib/mail/index.js";
 import { ApiError } from "../../utils/api-error.js";
 import { generateId, generateToken, hashToken } from "../../utils/crypto.js";
-import { consumeOtp, issueOtp, OTP_TTL_MINUTES } from "./otp.service.js";
+import { consumeOtp, issueOtp, OTP_TTL_MINUTES } from "./auth.otp.js";
 import { emailField, phoneField, type LoginInput, type RegisterInput, type ResetPasswordInput } from "./auth.schema.js";
+import type { ClientInfo, PublicUser } from "./auth.types.js";
 
 const DAY = 24 * 60 * 60 * 1000;
-
-export interface ClientInfo {
-  userAgent?: string;
-  ip?: string;
-}
-
-export type PublicUser = Omit<User, "passwordHash" | "deletedAt">;
 
 export const toPublicUser = ({ passwordHash: _p, deletedAt: _d, ...user }: User): PublicUser => user;
 

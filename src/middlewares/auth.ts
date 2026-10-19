@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import jwt from "jsonwebtoken";
 import type { PlatformRole } from "@prisma/client";
 import { env } from "../config/env.js";
-import { ACCESS_COOKIE } from "../modules/auth/auth.cookies.js";
+import { COOKIES } from "../constants/index.js";
 import { ApiError } from "../utils/api-error.js";
 
 interface AccessPayload {
@@ -14,7 +14,7 @@ interface AccessPayload {
 export const requireAuth: RequestHandler = (req, _res, next) => {
   const header = req.headers.authorization;
   const token =
-    req.cookies?.[ACCESS_COOKIE] ?? (header?.startsWith("Bearer ") ? header.slice(7) : undefined);
+    req.cookies?.[COOKIES.ACCESS_TOKEN] ?? (header?.startsWith("Bearer ") ? header.slice(7) : undefined);
 
   if (!token) throw ApiError.unauthorized("Not authenticated");
 

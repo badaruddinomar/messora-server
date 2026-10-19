@@ -1,9 +1,11 @@
 import type { Request, Response } from "express";
+import { COOKIES } from "../../constants/index.js";
 import { sendResponse } from "../../utils/send-response.js";
-import { clearAuthCookies, REFRESH_COOKIE, setAuthCookies } from "./auth.cookies.js";
+import { clearAuthCookies, setAuthCookies } from "./auth.cookies.js";
 import * as authService from "./auth.service.js";
+import type { ClientInfo } from "./auth.types.js";
 
-const clientInfo = (req: Request): authService.ClientInfo => ({
+const clientInfo = (req: Request): ClientInfo => ({
   userAgent: req.get("user-agent"),
   ip: req.ip,
 });
@@ -32,7 +34,7 @@ export async function login(req: Request, res: Response) {
 
 export async function refresh(req: Request, res: Response) {
   // Mobile clients send the refresh token in the body; web relies on the cookie.
-  const token = req.cookies?.[REFRESH_COOKIE] ?? req.body?.refreshToken;
+  const token = req.cookies?.[COOKIES.REFRESH_TOKEN] ?? req.body?.refreshToken;
   try {
     const session = await authService.refresh(token, clientInfo(req));
     respondWithSession(res, session, 200, "Session refreshed");
@@ -43,7 +45,7 @@ export async function refresh(req: Request, res: Response) {
 }
 
 export async function logout(req: Request, res: Response) {
-  await authService.logout(req.cookies?.[REFRESH_COOKIE] ?? req.body?.refreshToken);
+  await authService.logout(req.cookies?.[COOKIES.REFRESH_TOKEN] ?? req.body?.refreshToken);
   clearAuthCookies(res);
   sendResponse(res, { message: "Logged out" });
 }
