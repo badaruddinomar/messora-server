@@ -23,8 +23,8 @@
 | --- | ------------------------------------------------ | ------ |
 | 0   | Project setup & authentication                   | ✅     |
 | 1   | Engineering foundations & design system          | ✅     |
-| 2   | Mess & membership                                | 🔜     |
-| 3   | Billing months                                   | ⬜     |
+| 2   | Mess & membership                                | ✅     |
+| 3   | Billing months                                   | 🔜     |
 | 4   | Meals & daily menu                               | ⬜     |
 | 5   | Bazar (groceries)                                | ⬜     |
 | 6   | Deposits                                         | ⬜     |
@@ -89,35 +89,36 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 2 — Mess & membership 🔜
+## Phase 2 — Mess & membership ✅
 
 ### Backend
 
-- [ ] `POST /messes`: create a mess. In **one transaction**, also create `MessSetting`, the ADMIN `MessMember`, default meal slots (Breakfast 0.5, Lunch 1, Dinner 1), the `MESS_GROUP` conversation and the first `MessMonth`. Generate a unique `slug` and `joinCode`.
-- [ ] `GET /messes` (my messes), `GET/PATCH /messes/:messId`, `DELETE` (ADMIN only; soft delete)
-- [ ] `GET/PATCH /messes/:messId/settings`
-- [ ] Join by code: `POST /messes/join { joinCode }` creates a `PENDING` member and notifies admins and managers
-- [ ] `POST /messes/:messId/members/:memberId/approve | reject`
-- [ ] Invitations: `POST /messes/:messId/invitations` (phone or email; email sent via Brevo), accept, decline, revoke, expiry
-- [ ] Members: list (filter by status), change role (ADMIN only; a mess must always keep at least one ADMIN), suspend, remove, leave (`leftAt`, `leaveReason`)
-- [ ] `POST /messes/:messId/join-code/regenerate`
-- [ ] Audit log and notifications for joins, approvals and role changes
-- [ ] Tests: permission matrix per endpoint (see BUSINESS_RULES §2), the last-admin guard, duplicate joins
+- [x] `POST /messes`: create a mess. In **one transaction**, also create `MessSetting`, the ADMIN `MessMember`, default meal slots (Breakfast 0.5, Lunch 1, Dinner 1), the `MESS_GROUP` conversation and the first `MessMonth`. Generate a unique `slug` and `joinCode`.
+- [x] `GET /messes` (my messes), `GET/PATCH /messes/:messId`, `DELETE` (ADMIN only; soft delete)
+- [x] `GET/PATCH /messes/:messId/settings`
+- [x] Join by code: `POST /messes/join { joinCode }` creates a `PENDING` member and notifies admins and managers
+- [x] `POST /messes/:messId/members/:memberId/approve | reject`
+- [x] Invitations: `POST /messes/:messId/invitations` (phone or email; email sent via Brevo), accept, decline, revoke, expiry
+- [x] Members: list (filter by status), change role (ADMIN only; a mess must always keep at least one ADMIN), suspend, remove, leave (`leftAt`, `leaveReason`)
+- [x] `POST /messes/:messId/join-code` (regenerate)
+- [x] Audit log and notifications for joins, approvals and role changes
+- [x] Tests: permission matrix per endpoint (see BUSINESS_RULES §2), the last-admin guard, duplicate joins
 
 ### Frontend
 
-- [ ] Onboarding after first login: **Create a mess** or **Join with a code**
-- [ ] Create-mess wizard: name, address, gender, month start day, meal slots
-- [ ] Mess switcher. The active mess lives in the URL (`/m/[slug]/…`), so links can be shared and the page survives a refresh.
-- [ ] Members page: tabs for Active, Pending and Left; approve or reject; role menu; invite dialog; join code with copy and share buttons
-- [ ] Mess settings page
-- [ ] `useCurrentMess()` and `useCan(permission)` hooks for hiding or disabling actions by role
+- [x] Onboarding after first login: **Create a mess** or **Join with a code**
+- [x] Create-mess wizard: name, address, gender, month start day, meal slots
+- [x] Mess switcher. The active mess lives in the URL (`/m/[slug]/…`), so links can be shared and the page survives a refresh.
+- [x] Members page: tabs for Active, Requests, Invited and Left; approve or reject; role menu; invite dialog; join code with copy and share buttons
+- [x] Mess settings page
+- [x] `useCurrentMess()` and `useMessPermissions()` hooks for hiding or disabling actions by role
+- [x] Invitation landing page (`/invite/[token]`) that works before login, and invitations sent to your phone/email listed in the app
 
 **Done when:** a user can create a mess, invite or approve another user, and both can see the mess; every mutation is checked against its role; there are empty, loading and error states everywhere.
 
 ---
 
-## Phase 3 — Billing months
+## Phase 3 — Billing months 🔜
 
 ### Backend
 

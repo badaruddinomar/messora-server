@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { MemberStatus, MessRole, Prisma, type Mess } from "@prisma/client";
+import { MemberStatus, MessRole, MonthStatus, Prisma, type Mess } from "@prisma/client";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { audit } from "../../lib/audit.js";
 import { prisma, type DbClient } from "../../lib/prisma.js";
@@ -34,7 +34,12 @@ export function toMessDto(
     createdAt: mess.createdAt,
     joinCode: canManage ? mess.joinCode : null,
     activeMemberCount: mess._count?.members,
-    membership: { id: membership.id, role: membership.role, status: membership.status },
+    membership: {
+      id: membership.id,
+      role: membership.role,
+      status: membership.status,
+      isMonthManager: !!membership.isMonthManager,
+    },
   };
 }
 
@@ -139,10 +144,18 @@ export async function listMyMesses(userId: string) {
       status: { in: [MemberStatus.ACTIVE, MemberStatus.PENDING, MemberStatus.SUSPENDED] },
       mess: { isActive: true, deletedAt: null },
     },
-    include: { mess: { include: activeMemberCount } },
+    include: {
+      mess: { include: activeMemberCount },
+      managedMonths: { where: { status: MonthStatus.OPEN }, select: { id: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
-  return memberships.map(({ mess, ...membership }) => toMessDto(mess, membership));
+  return memberships.map(({ mess, managedMonths, ...membership }) =>
+    toMessDto(mess, {
+      ...membership,
+      isMonthManager: membership.role === MessRole.MEMBER && managedMonths.length > 0,
+    }),
+  );
 }
 
 export async function getMess(membership: Membership) {
