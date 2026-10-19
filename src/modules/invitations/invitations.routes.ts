@@ -1,10 +1,24 @@
 import { Router } from "express";
 import { requireAuth } from "../../middlewares/auth.js";
+import { strictLimiter } from "../../middlewares/rate-limit.js";
+import { MANAGER_ACCESS, requireMessMember } from "../../middlewares/tenant.js";
 import { validate } from "../../middlewares/validate.js";
 import * as invitations from "./invitations.controller.js";
-import { receivedInvitationParams, tokenParams } from "./invitations.schema.js";
+import {
+  createInvitationSchema,
+  invitationIdParams,
+  receivedInvitationParams,
+  tokenParams,
+} from "./invitations.schema.js";
 
-/** Invitee-side routes. Mess-side routes (create/list/revoke) live under /messes/:messId/invitations. */
+/** /messes/:messId/invitations: a mess's managers create, list and revoke invitations. */
+export const messInvitationRoutes = Router({ mergeParams: true });
+messInvitationRoutes.use(requireAuth, requireMessMember(MANAGER_ACCESS));
+messInvitationRoutes.get("/", invitations.list);
+messInvitationRoutes.post("/", strictLimiter, validate({ body: createInvitationSchema }), invitations.create);
+messInvitationRoutes.delete("/:invitationId", validate({ params: invitationIdParams }), invitations.revoke);
+
+/** /invitations: the invitee's side. */
 const router = Router();
 
 // Invitations sent to the logged-in user's phone or email.

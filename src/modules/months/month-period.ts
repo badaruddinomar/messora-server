@@ -1,4 +1,4 @@
-import { addDays, type DateString } from "../../utils/date.js";
+import { addDays, daysInclusive, type DateString } from "../../utils/date.js";
 
 export const MIN_MONTH_START_DAY = 1;
 /** Capped at 28 so every month has the start day (BUSINESS_RULES §3). */
@@ -39,3 +39,37 @@ export function periodContaining(date: DateString, startDay: number): MonthPerio
 /** The billing month after `period`. */
 export const nextPeriod = ({ year, month }: MonthPeriod, startDay: number) =>
   month === 12 ? periodFor(year + 1, 1, startDay) : periodFor(year, month + 1, startDay);
+
+/** A billing month is never shorter than this, even right after the start day changes. */
+const MIN_MONTH_DAYS = 14;
+
+/**
+ * The billing month that follows one ending on `previousEnd` (BUSINESS_RULES §3).
+ *
+ * It always starts the day after `previousEnd`, so months never overlap or leave gaps. Normally it ends
+ * the day before `startDay` in the next calendar month. If the start day was changed, the first month
+ * after the change runs until the next `startDay` that falls in a later calendar month and at least
+ * 14 days ahead, so it's never a stub. Months are labelled by the calendar month they start in.
+ */
+export function periodAfter(previousEnd: DateString, startDay: number): MonthPeriod {
+  if (startDay < MIN_MONTH_START_DAY || startDay > MAX_MONTH_START_DAY) {
+    throw new RangeError(`Month start day must be between 1 and 28, got ${startDay}`);
+  }
+  const start = addDays(previousEnd, 1);
+  const [year, month] = start.split("-").map(Number);
+
+  // Walk forward month by month to the first suitable next start date.
+  let y = year;
+  let m = month;
+  let nextStart: DateString;
+  do {
+    m += 1;
+    if (m === 13) {
+      m = 1;
+      y += 1;
+    }
+    nextStart = `${y}-${pad(m)}-${pad(startDay)}`;
+  } while (daysInclusive(start, nextStart) - 1 < MIN_MONTH_DAYS);
+
+  return { year, month, startDate: start, endDate: addDays(nextStart, -1) };
+}

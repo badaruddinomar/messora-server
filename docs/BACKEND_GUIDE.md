@@ -35,7 +35,12 @@ src/modules/<name>/
   <name>.test.ts         (integration tests for the routes)
 ```
 
-Register the router in `src/routes/index.ts`. Mess-scoped modules are nested under `/messes/:messId/...`.
+Register the router in `src/routes/index.ts`. A mess-scoped module gets its own router created with
+`Router({ mergeParams: true })` and mounted at `/messes/:messId/<module>` (before the `/messes` router), so
+`requireMessMember()` can read `:messId`. Keep `messes.routes.ts` for the mess itself only.
+
+Anything dated (meals, bazars, deposits, expenses…) finds its month with `monthForDate()` and calls
+`assertMonthEditable()` before writing (`modules/months/months.service.ts`).
 
 Planned modules: `auth`, `users`, `messes`, `members`, `invitations`, `rooms`, `months`, `meals`, `menus`, `bazars`, `deposits`, `staff`, `expenses`, `charges`, `settlement`, `funds`, `reports`, `notifications`, `notices`, `chat`, `uploads`, `audit`, `admin`.
 

@@ -37,11 +37,29 @@ Effective roles: **ADMIN**, **MANAGER**, **MONTH MANAGER** (the member set as `M
 
 ## 3. Months
 
-- `monthStartDay` is between 1 and 28. A month labelled `(year, month)` runs from `year-month-startDay` to the day before the same start day in the next month. Example: start day 5 → Oct 5 to Nov 4 is the "October" month.
-- Exactly one month per mess is `OPEN` at a time. Creating a mess opens the month that contains today.
+- `monthStartDay` is between 1 and 28. A month labelled `(year, month)` runs from `year-month-startDay` to the day
+  before the same start day in the next month. Example: start day 5 → Oct 5 to Nov 4 is the "October" month. Months
+  are always labelled by the calendar month they start in.
+- **Months open by themselves.** The month that contains today (in the mess timezone) always exists: creating a mess
+  opens it, and each new month opens automatically on its first day. If nobody used the mess for a while, every month
+  in between is opened too, so there are never gaps.
+- **Last month stays open until it's closed.** A month that has ended stays `OPEN` (shown as "ended, waiting to be
+  closed"), so late bazars, deposits and corrections can still be added while the new month is already running.
+  Several months can therefore be `OPEN` at once.
+- **Months are closed in order**: a month can only start closing once every earlier month is `CLOSED`
+  (`MONTHS_OUT_OF_ORDER`).
 - Status flow: `OPEN → CLOSING → CLOSED`. An ADMIN may move `CLOSING` back to `OPEN`. `CLOSED` is final.
-- In `CLOSING` and `CLOSED`, every meal or money mutation for that month is rejected (`MONTH_CLOSED`). Corrections to a closed month go into the **next** month as an `ADJUSTMENT` charge, with a description that points back to the original month.
-- Every meal or money record belongs to the month whose date range contains its date.
+- In `CLOSING` and `CLOSED`, every meal or money change for that month is rejected (`MONTH_CLOSED`). Corrections to
+  a closed month go into a later month as an `ADJUSTMENT` charge, with a description that points back to the
+  original month.
+- Every meal or money record belongs to the month whose date range contains its date. Dates before the first month or
+  after the current month are rejected (`DATE_OUTSIDE_MONTHS`).
+- **Changing the start day** applies from the next month that opens. That month starts the day after the previous one
+  ends, and runs until the next new start day that is in a later calendar month and at least 14 days away, so there is
+  no overlap, no gap and no stub month. Example: months on the 1st, switched to the 5th → November runs Nov 1 – Dec 4,
+  then December starts on Dec 5.
+- **Month manager.** An ADMIN can assign one active member as a month's manager. While that month is `OPEN`, they
+  have manager powers (BUSINESS_RULES §2) even if their role is MEMBER. A closed month's manager can't be changed.
 
 ## 4. Meals
 
