@@ -22,6 +22,19 @@ export const MANAGER_ACCESS = {
 
 export const ADMIN_ONLY = { roles: [MessRole.ADMIN] } as const satisfies RequireMessMemberOptions;
 
+/** The caller's membership on mess-scoped routes (set by `requireMessMember`). */
+export type Membership = NonNullable<Express.Request["membership"]>;
+
+/** Manager-level powers: ADMIN, MANAGER, or manager of the OPEN month (BUSINESS_RULES §2). */
+export const hasManagerAccess = (m: Pick<Membership, "role" | "isMonthManager">) =>
+  m.role === MessRole.ADMIN || m.role === MessRole.MANAGER || m.isMonthManager;
+
+/** `req.membership` for handlers behind `requireMessMember`. */
+export function membershipOf(req: Express.Request): Membership {
+  if (!req.membership) throw new Error("requireMessMember must run before this handler");
+  return req.membership;
+}
+
 /**
  * Loads the caller's membership for `:messId` and sets `req.membership`.
  * Must run after `requireAuth`. Responds 404 for messes the user doesn't belong to (so a mess's
@@ -44,16 +57,16 @@ export const requireMessMember =
       throw ApiError.forbidden("Your membership in this mess is not active", ERROR_CODES.MEMBERSHIP_INACTIVE);
     }
 
-    let isMonthManager = false;
-    const hasRole = !options.roles || options.roles.includes(member.role);
-    if (!hasRole && options.allowMonthManager) {
-      const managedMonth = await prisma.messMonth.findFirst({
+    // ADMIN/MANAGER already have manager powers, so only plain members need the month lookup.
+    const isMonthManager =
+      member.role === MessRole.MEMBER &&
+      !!(await prisma.messMonth.findFirst({
         where: { messId: member.messId, status: MonthStatus.OPEN, managerId: member.id },
         select: { id: true },
-      });
-      isMonthManager = !!managedMonth;
-    }
-    if (!hasRole && !isMonthManager) {
+      }));
+
+    const hasRole = !options.roles || options.roles.includes(member.role);
+    if (!hasRole && !(options.allowMonthManager && isMonthManager)) {
       throw ApiError.forbidden("You don't have permission to do this", ERROR_CODES.INSUFFICIENT_ROLE);
     }
 

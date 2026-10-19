@@ -14,7 +14,8 @@ interface Schemas {
 export const validate =
   (schemas: Schemas): RequestHandler =>
   (req, _res, next) => {
-    if (schemas.body) req.body = schemas.body.parse(req.body);
+    // Express 5 leaves req.body undefined when nothing was sent; treat that as an empty object.
+    if (schemas.body) req.body = schemas.body.parse(req.body ?? {});
     // In Express 5 req.query/req.params are getters, so redefine them instead of assigning.
     if (schemas.query) {
       Object.defineProperty(req, "query", { value: schemas.query.parse(req.query), writable: true });

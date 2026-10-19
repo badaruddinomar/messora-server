@@ -119,3 +119,39 @@ closingCash = openingCash
 - Only `APPROVED` entries count in any calculation. `PENDING` entries show in the close wizard as warnings.
 - Rejecting requires a reason. A rejected entry can be edited and resubmitted by its creator, which sets it back to `PENDING`.
 - The creator can edit an entry while it is `PENDING`. Managers can edit it in any state, as long as the month is `OPEN`.
+
+## 11. Membership
+
+**Creating a mess.** The creator becomes its first ADMIN (ACTIVE from today). The mess starts with default settings,
+the default meal slots (or the ones chosen in the wizard), its group chat, and the billing month that contains today.
+
+**Joining with a code.** Anyone with the 8-character join code can _ask_ to join. That creates a `PENDING`
+membership and notifies the managers. A manager approves (the member becomes `ACTIVE` from that day and joins the group
+chat) or declines (the request is removed, so the person can ask again). The requester can cancel their own request.
+Managers can regenerate the code at any time; old codes stop working immediately.
+
+**Invitations.** Managers invite by phone or email; only admins can invite managers, and nobody is invited as ADMIN
+(admins are made by promoting a member).
+
+- An invitation is a single-use link that is valid for **7 days**. Whoever opens it can accept it once, so it can be
+  shared over WhatsApp/SMS. Email invitations are also sent by email. Only a hash of the link is stored.
+- People who already have an account with the invited phone or email also see the invitation in the app and can
+  accept it there (only they can).
+- Accepting makes the person `ACTIVE` immediately with the invited role; there is no approval step.
+- Inviting the same phone/email again replaces the previous pending invitation. Managers can revoke pending ones.
+
+**Leaving and removal.** Members can leave; admins can remove members. Either way the membership becomes `LEFT` with
+`leftAt` = today, and the person becomes read-only in the group chat. Their records stay, so past months and balances
+remain correct. A member who left can ask to join again; their old membership is reused so history stays linked.
+
+**Suspension.** Admins can suspend and reactivate members. Suspended members can't use the mess and can't rejoin
+with a code until they are reactivated.
+
+**Last admin.** Every action that would leave a mess without an `ACTIVE` ADMIN is rejected (`LAST_ADMIN`): demoting,
+suspending, removing or leaving as the only admin. Admins can't suspend or remove themselves.
+
+**Visibility.** All members see the member list with names and phone numbers. Emails, leave reasons, join requests and
+invitations are visible to managers only.
+
+**Deleting a mess.** Admin only, confirmed by typing the mess name. The mess is soft-deleted: it disappears for everyone,
+and its data is kept.
