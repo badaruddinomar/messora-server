@@ -8,7 +8,10 @@ export const generateId = () => randomUUID();
 export const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 
 /** Numeric one-time code, e.g. "042917". */
-export const generateOtp = (digits = 6) => randomInt(0, 10 ** digits).toString().padStart(digits, "0");
+export const generateOtp = (digits = 6) =>
+  randomInt(0, 10 ** digits)
+    .toString()
+    .padStart(digits, "0");
 
 /** OTPs have little entropy, so they are hashed with a server secret and bound to target + purpose. */
 export const hashOtp = (target: string, purpose: string, code: string) =>

@@ -12,14 +12,14 @@ request → app.ts (helmet, cors, json, cookies, logger)
         ↘ errors → error-handler.ts (one response shape)
 ```
 
-| Layer | May | May not |
-| --- | --- | --- |
-| `*.routes.ts` | wire middlewares + controller | contain logic |
-| `*.controller.ts` | read `req`, call a service, `sendResponse` | touch Prisma, contain business rules |
-| `*.service.ts` | business rules, Prisma, call other services, `audit()`, `notify()` | read `req`/`res`, set cookies |
-| `*.schema.ts` | Zod schemas + inferred input types | import Prisma or services |
-| `lib/`, `utils/` | generic helpers | import from `modules/` |
-| `middlewares/` | cross-cutting checks | import from `modules/` (use `constants/`) |
+| Layer             | May                                                                | May not                                   |
+| ----------------- | ------------------------------------------------------------------ | ----------------------------------------- |
+| `*.routes.ts`     | wire middlewares + controller                                      | contain logic                             |
+| `*.controller.ts` | read `req`, call a service, `sendResponse`                         | touch Prisma, contain business rules      |
+| `*.service.ts`    | business rules, Prisma, call other services, `audit()`, `notify()` | read `req`/`res`, set cookies             |
+| `*.schema.ts`     | Zod schemas + inferred input types                                 | import Prisma or services                 |
+| `lib/`, `utils/`  | generic helpers                                                    | import from `modules/`                    |
+| `middlewares/`    | cross-cutting checks                                               | import from `modules/` (use `constants/`) |
 
 Pure calculations (meal rate, splitting, settlement) go in **plain functions without Prisma** (e.g. `modules/settlement/engine.ts`), so they can be unit-tested in isolation.
 
@@ -79,11 +79,11 @@ Planned modules: `auth`, `users`, `messes`, `members`, `invitations`, `rooms`, `
 
 ## 8. Testing
 
-| Kind | Tool | What |
-| --- | --- | --- |
-| Unit | Vitest | pure functions: calculation engine, splitting, date math, phone normalization |
-| Integration | Vitest + Supertest + test DB | every route: happy path, validation, permissions, tenant isolation |
-| Contract | — | the client e2e suite (Playwright) covers the main flows end to end |
+| Kind        | Tool                         | What                                                                          |
+| ----------- | ---------------------------- | ----------------------------------------------------------------------------- |
+| Unit        | Vitest                       | pure functions: calculation engine, splitting, date math, phone normalization |
+| Integration | Vitest + Supertest + test DB | every route: happy path, validation, permissions, tenant isolation            |
+| Contract    | —                            | the client e2e suite (Playwright) covers the main flows end to end            |
 
 - The settlement engine must have **100%** branch coverage, and fixtures taken from real messes.
 - Each test file cleans up after itself (truncate tables between tests). Tests never depend on each other's order.

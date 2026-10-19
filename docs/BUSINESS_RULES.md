@@ -2,7 +2,7 @@
 
 This file is the source of truth for **how Messora calculates money and who may do what**. Code and tests must match it. If a rule changes, change it here first, in the same PR as the code.
 
-Terms: *mess* is the tenant, *member* is a `MessMember`, *month* is a `MessMonth` (billing cycle), *manager* is a member with role MANAGER/ADMIN or the month's assigned `managerId`.
+Terms: _mess_ is the tenant, _member_ is a `MessMember`, _month_ is a `MessMonth` (billing cycle), _manager_ is a member with role MANAGER/ADMIN or the month's assigned `managerId`.
 
 ---
 
@@ -18,19 +18,19 @@ Terms: *mess* is the tenant, *member* is a `MessMember`, *month* is a `MessMonth
 
 Effective roles: **ADMIN**, **MANAGER**, **MONTH MANAGER** (the member set as `MessMonth.managerId`, with manager powers for that month only), and **MEMBER**. Only `ACTIVE` members can act. `PENDING` and `SUSPENDED` members can read nothing except their own membership.
 
-| Action | Member | Manager / Month manager | Admin |
-| --- | :-: | :-: | :-: |
-| View mess, members, menu, notices, month summary | ✅ | ✅ | ✅ |
-| Edit own meals before cutoff | ✅ (if `allowMemberMealEdit`) | ✅ | ✅ |
-| Edit anyone's meals / after cutoff | — | ✅ | ✅ |
-| Submit bazar / deposit / meal request | ✅ | ✅ | ✅ |
-| Approve or reject bazar, deposits, meal requests | — | ✅ | ✅ |
-| Add shared expenses, charges, menu, notices | — | ✅ | ✅ |
-| Approve join requests, invite members | — | ✅ | ✅ |
-| Start closing / close a month, record settlements | — | ✅ | ✅ |
-| Reopen a CLOSING month | — | — | ✅ |
-| Change roles, remove members, settings, rooms & seats, staff | — | — | ✅ |
-| Delete the mess | — | — | ✅ |
+| Action                                                       |            Member             | Manager / Month manager | Admin |
+| ------------------------------------------------------------ | :---------------------------: | :---------------------: | :---: |
+| View mess, members, menu, notices, month summary             |              ✅               |           ✅            |  ✅   |
+| Edit own meals before cutoff                                 | ✅ (if `allowMemberMealEdit`) |           ✅            |  ✅   |
+| Edit anyone's meals / after cutoff                           |               —               |           ✅            |  ✅   |
+| Submit bazar / deposit / meal request                        |              ✅               |           ✅            |  ✅   |
+| Approve or reject bazar, deposits, meal requests             |               —               |           ✅            |  ✅   |
+| Add shared expenses, charges, menu, notices                  |               —               |           ✅            |  ✅   |
+| Approve join requests, invite members                        |               —               |           ✅            |  ✅   |
+| Start closing / close a month, record settlements            |               —               |           ✅            |  ✅   |
+| Reopen a CLOSING month                                       |               —               |            —            |  ✅   |
+| Change roles, remove members, settings, rooms & seats, staff |               —               |            —            |  ✅   |
+| Delete the mess                                              |               —               |            —            |  ✅   |
 
 - A mess must always have **at least one ACTIVE ADMIN**. Demoting or removing the last admin, or the last admin leaving, is rejected.
 - Members can only see **their own** detailed statement. Everyone can see the month summary table (that transparency is normal in a mess).
@@ -76,7 +76,7 @@ A member **takes part** in a month if they were ACTIVE on at least one day of it
 - `BY_MEAL`: split in proportion to each member's weighted meals. If nobody had meals, it falls back to `EQUAL`.
 - `CUSTOM`: explicit `ExpenseShare` rows. These must add up exactly to `amount`, which is checked on create and update.
 
-**Splitting algorithm (largest remainder):** compute each share exactly, round each one *down* to 0.01, then hand out the leftover cents one at a time to the shares with the largest remainders (ties go to the lower `memberId`). Σ shares = amount, always.
+**Splitting algorithm (largest remainder):** compute each share exactly, round each one _down_ to 0.01, then hand out the leftover cents one at a time to the shares with the largest remainders (ties go to the lower `memberId`). Σ shares = amount, always.
 
 The same algorithm is used for each member's meal cost, so Σ meal costs = `totalBazar` exactly.
 

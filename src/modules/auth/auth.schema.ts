@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const emailField = z.email().trim().toLowerCase();
+export const emailField = z.string().trim().toLowerCase().pipe(z.email());
 
 /**
  * Accepts international numbers ("+8801712345678") and local Bangladeshi numbers ("01712345678"),
@@ -18,7 +18,10 @@ const passwordField = z
   .min(8, "Password must be at least 8 characters")
   .max(72, "Password must be at most 72 characters");
 
-const otpField = z.string().trim().regex(/^\d{6}$/, "Code must be 6 digits");
+const otpField = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, "Code must be 6 digits");
 
 export const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),

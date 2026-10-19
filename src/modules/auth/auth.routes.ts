@@ -1,6 +1,6 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
 import { requireAuth } from "../../middlewares/auth.js";
+import { strictLimiter } from "../../middlewares/rate-limit.js";
 import { validate } from "../../middlewares/validate.js";
 import * as ctrl from "./auth.controller.js";
 import {
@@ -12,8 +12,6 @@ import {
 } from "./auth.schema.js";
 
 const router = Router();
-
-const strictLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-8", legacyHeaders: false });
 
 router.post("/register", strictLimiter, validate({ body: registerSchema }), ctrl.register);
 router.post("/login", strictLimiter, validate({ body: loginSchema }), ctrl.login);

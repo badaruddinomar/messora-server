@@ -1,4 +1,5 @@
 import { env } from "../../config/env.js";
+import { logger } from "../logger.js";
 
 const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
@@ -14,7 +15,7 @@ interface SendMailInput {
  */
 export async function sendMail({ to, subject, html }: SendMailInput): Promise<void> {
   if (!env.BREVO_API_KEY) {
-    console.info(`[mail:dev] To: ${to.email} | Subject: ${subject}\n${html}\n`);
+    logger.info({ to: to.email, subject }, `[mail:dev] email not sent (no BREVO_API_KEY)\n${html}`);
     return;
   }
 

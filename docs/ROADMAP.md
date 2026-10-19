@@ -19,24 +19,24 @@
 
 ## Overview
 
-| # | Phase | Status |
-| --- | --- | --- |
-| 0 | Project setup & authentication | ✅ |
-| 1 | Engineering foundations & design system | 🔜 |
-| 2 | Mess & membership | ⬜ |
-| 3 | Billing months | ⬜ |
-| 4 | Meals & daily menu | ⬜ |
-| 5 | Bazar (groceries) | ⬜ |
-| 6 | Deposits | ⬜ |
-| 7 | Rooms, staff, shared expenses & charges | ⬜ |
-| 8 | Month close & settlement | ⬜ |
-| 9 | Dashboards & reports | ⬜ |
-| 10 | Notifications & notice board | ⬜ |
-| 11 | Chat | ⬜ |
-| 12 | Account, profile & phone verification | ⬜ |
-| 13 | Audit log & super admin | ⬜ |
-| 14 | Bangla/English, PWA, accessibility & performance | ⬜ |
-| 15 | Hardening & launch | ⬜ |
+| #   | Phase                                            | Status |
+| --- | ------------------------------------------------ | ------ |
+| 0   | Project setup & authentication                   | ✅     |
+| 1   | Engineering foundations & design system          | 🔜     |
+| 2   | Mess & membership                                | ⬜     |
+| 3   | Billing months                                   | ⬜     |
+| 4   | Meals & daily menu                               | ⬜     |
+| 5   | Bazar (groceries)                                | ⬜     |
+| 6   | Deposits                                         | ⬜     |
+| 7   | Rooms, staff, shared expenses & charges          | ⬜     |
+| 8   | Month close & settlement                         | ⬜     |
+| 9   | Dashboards & reports                             | ⬜     |
+| 10  | Notifications & notice board                     | ⬜     |
+| 11  | Chat                                             | ⬜     |
+| 12  | Account, profile & phone verification            | ⬜     |
+| 13  | Audit log & super admin                          | ⬜     |
+| 14  | Bangla/English, PWA, accessibility & performance | ⬜     |
+| 15  | Hardening & launch                               | ⬜     |
 
 ---
 
@@ -57,21 +57,23 @@
 Build the shared building blocks **before** features, so every later screen and module is consistent from day one.
 
 ### Backend
-- [ ] ESLint (typescript-eslint) + Prettier, `npm run lint` / `format`
-- [ ] Structured logging with **pino** (+ `pino-http`): request id per request, no secrets in logs
-- [ ] **Vitest + Supertest**, separate test database, factories for users/messes, `npm test`
-- [ ] Shared helpers:
-  - [ ] `paginate()`: cursor pagination (`?cursor=&limit=`) with a standard `{ items, nextCursor }` response
-  - [ ] Money helpers on `Prisma.Decimal`; never JavaScript floats (see BUSINESS_RULES §1)
-  - [ ] Date helpers that respect the mess timezone (`Asia/Dhaka` by default): "today" for a mess, `@db.Date` conversion
-  - [ ] Decimal and Date serialization: money as strings in JSON, dates as `YYYY-MM-DD`
-- [ ] **Tenant middleware** `requireMessMember({ roles?, allowMonthManager? })`: loads the membership for `:messId`, rejects non-members and inactive members, sets `req.membership`
-- [ ] `audit()` helper that writes `AuditLog` rows (used from Phase 2 on)
-- [ ] `notify()` service that writes in-app `Notification` rows (delivery channels come in Phase 10)
-- [ ] Error codes: add a machine-readable `code` (e.g. `MONTH_CLOSED`, `NOT_A_MEMBER`) next to `message`
-- [ ] GitHub Actions CI: lint, typecheck, test (with a Postgres service), build
+
+- [x] ESLint (typescript-eslint) + Prettier, `npm run lint` / `format`
+- [x] Structured logging with **pino** (+ `pino-http`): request id per request, no secrets in logs
+- [x] **Vitest + Supertest**, separate test database, factories for users/messes, `npm test`
+- [x] Shared helpers:
+  - [x] Cursor pagination (`paginationQuery`, `cursorArgs`, `toPage`) (`?cursor=&limit=`) with a standard `{ items, nextCursor }` response
+  - [x] Money helpers on `Prisma.Decimal`; never JavaScript floats (see BUSINESS_RULES §1)
+  - [x] Date helpers that respect the mess timezone (`Asia/Dhaka` by default): "today" for a mess, `@db.Date` conversion
+  - [x] Decimal and Date serialization: money as strings in JSON (Decimal `toJSON`), dates as `YYYY-MM-DD` (`fromDbDate()` in module responses)
+- [x] **Tenant middleware** `requireMessMember({ roles?, allowMonthManager? })`: loads the membership for `:messId`, rejects non-members and inactive members, sets `req.membership`
+- [x] `audit()` helper that writes `AuditLog` rows (used from Phase 2 on)
+- [x] `notify()` service that writes in-app `Notification` rows (delivery channels come in Phase 10)
+- [x] Error codes: add a machine-readable `code` (e.g. `MONTH_CLOSED`, `NOT_A_MEMBER`) next to `message`
+- [x] GitHub Actions CI: lint, typecheck, test (with a Postgres service), build
 
 ### Frontend
+
 - [ ] Install the **design system** (see DESIGN_SYSTEM.md): shadcn/ui on Radix, lucide-react icons, sonner toasts, next-themes (light/dark), motion for animation
 - [ ] Replace the hand-made `Button`, `Field`, `Alert`, `Spinner` with design-system components; restyle the auth pages with them
 - [ ] Design tokens in `globals.css`: colors, radius, shadows, spacing; light and dark
@@ -89,6 +91,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 2 — Mess & membership
 
 ### Backend
+
 - [ ] `POST /messes`: create a mess. In **one transaction**, also create `MessSetting`, the ADMIN `MessMember`, default meal slots (Breakfast 0.5, Lunch 1, Dinner 1), the `MESS_GROUP` conversation and the first `MessMonth`. Generate a unique `slug` and `joinCode`.
 - [ ] `GET /messes` (my messes), `GET/PATCH /messes/:messId`, `DELETE` (ADMIN only; soft delete)
 - [ ] `GET/PATCH /messes/:messId/settings`
@@ -101,6 +104,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Tests: permission matrix per endpoint (see BUSINESS_RULES §2), the last-admin guard, duplicate joins
 
 ### Frontend
+
 - [ ] Onboarding after first login: **Create a mess** or **Join with a code**
 - [ ] Create-mess wizard: name, address, gender, month start day, meal slots
 - [ ] Mess switcher. The active mess lives in the URL (`/m/[slug]/…`), so links can be shared and the page survives a refresh.
@@ -115,6 +119,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 3 — Billing months
 
 ### Backend
+
 - [ ] Month lifecycle: `OPEN → CLOSING → CLOSED` (BUSINESS_RULES §3). Only **one** OPEN month per mess.
 - [ ] Month dates follow `monthStartDay` (limit it to 1–28)
 - [ ] `GET /messes/:messId/months`, `GET /months/:monthId`, `PATCH` (assign the month's manager)
@@ -122,6 +127,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Tests: date math across month and year boundaries, start days such as 5 → 4
 
 ### Frontend
+
 - [ ] Month picker shared by every money and meal screen (stored in the URL with nuqs: `?month=2026-10`)
 - [ ] Month status badge; read-only mode for CLOSING and CLOSED months
 - [ ] Month manager assignment (ADMIN)
@@ -133,6 +139,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 4 — Meals & daily menu
 
 ### Backend
+
 - [ ] Meal slots CRUD (name, weight, cutoff time, order, active)
 - [ ] Meal entries:
   - [ ] `GET /messes/:messId/meals?date=` (one day, all members) and `?from=&to=&memberId=` (range)
@@ -148,6 +155,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Tests: cutoff in the mess timezone, generation idempotency, off periods
 
 ### Frontend
+
 - [ ] **My meals** (mobile first): today's slots as large toggles with guest +/−, a countdown to each cutoff, and optimistic updates with rollback on error
 - [ ] **Meal sheet** (manager): members × slots grid for one day, keyboard friendly, sticky header, live totals per slot
 - [ ] Monthly calendar view of a member's meals with totals
@@ -160,6 +168,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 5 — Bazar (groceries)
 
 ### Backend
+
 - [ ] File uploads (receipts first; reused for avatars and chat later): presigned uploads to object storage (see Open decisions), size and type limits
 - [ ] Bazar duty schedule: generate a rotation for the month, swap duties, mark done; reminder job (`BAZAR_DUTY_REMINDER`)
 - [ ] Bazar CRUD with items (`totalAmount` = sum of item prices, checked on the server), `paidFrom`, receipt
@@ -168,6 +177,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Tests: totals, approval permissions, closed-month guard
 
 ### Frontend
+
 - [ ] Add-bazar form with dynamic item rows (name, quantity, unit, price), a running total and a receipt photo (camera on mobile)
 - [ ] Bazar list with filters (status, shopper, date) kept in the URL with nuqs, and month totals
 - [ ] Approval queue for managers (approve or reject with a reason)
@@ -180,11 +190,13 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 6 — Deposits
 
 ### Backend
+
 - [ ] Deposits: a member submits (amount, method such as bKash/Nagad/cash, transaction ref), a manager approves or rejects; managers can also record a deposit directly as APPROVED
 - [ ] `requireDepositApproval` setting, notifications, audit log
 - [ ] Tests
 
 ### Frontend
+
 - [ ] Deposit form, "My deposits" history, manager approval queue, per-member deposit totals for the month
 
 **Done when:** approved deposits show up immediately in the member's balance preview (Phase 8 makes it final).
@@ -194,6 +206,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 7 — Rooms, staff, shared expenses & charges
 
 ### Backend
+
 - [ ] Rooms & seats CRUD, assign or unassign a member to a seat, monthly rent
 - [ ] Staff CRUD (cook, maid, …) with monthly salary
 - [ ] Shared expenses: category, amount, split type `EQUAL | BY_MEAL | CUSTOM`, `paidFrom`, receipt. For `CUSTOM`, the shares must add up to the amount exactly.
@@ -202,6 +215,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Tests: split rounding (shares always add up to the total), proration
 
 ### Frontend
+
 - [ ] Rooms & seats board, staff list, expense form with a live split preview, and a charges list
 - [ ] Expense breakdown by category
 
@@ -212,6 +226,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 8 — Month close & settlement ⭐ (the core of the product)
 
 ### Backend
+
 - [ ] A **calculation engine** as pure, framework-free functions (`modules/settlement/engine.ts`) that implements BUSINESS_RULES §5–§8 exactly
   - [ ] 100% unit-test coverage of the engine, including rounding, members who join or leave mid-month, zero meals, own-pocket spending, negative adjustments, and carried-over balances
 - [ ] `GET /months/:monthId/preview`: a live calculation for an OPEN month (what everyone owes so far)
@@ -222,6 +237,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Due-reminder job (`dueReminderDay`)
 
 ### Frontend
+
 - [ ] **Month summary** screen: meal rate, totals, a per-member table (meals, meal cost, shared cost, charges, deposits, balance) with colour-coded due and refund
 - [ ] Close-month wizard: review warnings (pending bazars or deposits, members with no meals) → start closing → confirm → done
 - [ ] Settlement screen: record payments, filter settled / unsettled
@@ -247,6 +263,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 10 — Notifications & notice board
 
 ### Backend
+
 - [ ] Notifications API: list (cursor-paginated), unread count, mark read / mark all read
 - [ ] Delivery worker (BullMQ): one `NotificationDelivery` row per channel, with retries and backoff: **in-app** (Socket.IO), **email** (Brevo), **web push** (FCM)
 - [ ] Notification preferences (type × channel matrix; no row means ON)
@@ -255,6 +272,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Socket.IO server with authenticated connections and one room per mess and per user (shared with Phase 11)
 
 ### Frontend
+
 - [ ] Notification bell with a live unread count, a dropdown and a full page; each item deep-links to its entity
 - [ ] Preferences page, web push opt-in prompt (asked at a sensible moment, not on first load)
 - [ ] Notice board with pinned notices on top
@@ -266,6 +284,7 @@ Build the shared building blocks **before** features, so every later screen and 
 ## Phase 11 — Chat
 
 ### Backend
+
 - [ ] Conversations: the mess group (auto-joined by active members, read-only after leaving) and direct messages between members of the same mess (`uniqueKey`)
 - [ ] Messages: send, edit, delete for everyone, delete for me (`MessageHidden`), reply, reactions, attachments (images, files, voice notes)
 - [ ] Read state (`lastReadMessageId`), unread counts, typing indicators, online / last seen
@@ -274,6 +293,7 @@ Build the shared building blocks **before** features, so every later screen and 
 - [ ] Rate limiting and size limits on messages and uploads
 
 ### Frontend
+
 - [ ] Conversation list (pinned, archived, muted) and a chat view with infinite scroll upwards, date dividers, optimistic sends with retry, read ticks, reactions, replies, image previews and voice recording
 - [ ] Mobile-first layout: list → conversation, with a back gesture
 
@@ -327,12 +347,12 @@ Build the shared building blocks **before** features, so every later screen and 
 
 Decide these before the phase that needs them. Record the choice here.
 
-| Decision | Needed by | Options / recommendation |
-| --- | --- | --- |
-| File storage | Phase 5 | **Cloudflare R2** (S3-compatible, no egress fees) · AWS S3 · Cloudinary (adds image transforms) |
-| Background jobs | Phase 4 | **BullMQ + Redis** (the schema already assumes it) |
-| Realtime | Phase 10 | **Socket.IO** (rooms, reconnects, fallbacks) |
-| Push notifications | Phase 10 | **Firebase Cloud Messaging** (web now; Android and iOS later via `DevicePlatform`) |
-| SMS provider (BD) | Phase 12 | Local Bangladeshi gateways (e.g. SSL Wireless, BulkSMSBD) or Twilio; compare price per SMS and delivery rate |
-| Hosting | Phase 15 | Vercel (client) + Railway / Render / VPS (API, worker, Redis) + Neon / Supabase / RDS (Postgres) |
-| Payments in-app (bKash/Nagad API) | after v1 | v1 only *records* payments; online payment collection is a later feature |
+| Decision                          | Needed by | Options / recommendation                                                                                     |
+| --------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------ |
+| File storage                      | Phase 5   | **Cloudflare R2** (S3-compatible, no egress fees) · AWS S3 · Cloudinary (adds image transforms)              |
+| Background jobs                   | Phase 4   | **BullMQ + Redis** (the schema already assumes it)                                                           |
+| Realtime                          | Phase 10  | **Socket.IO** (rooms, reconnects, fallbacks)                                                                 |
+| Push notifications                | Phase 10  | **Firebase Cloud Messaging** (web now; Android and iOS later via `DevicePlatform`)                           |
+| SMS provider (BD)                 | Phase 12  | Local Bangladeshi gateways (e.g. SSL Wireless, BulkSMSBD) or Twilio; compare price per SMS and delivery rate |
+| Hosting                           | Phase 15  | Vercel (client) + Railway / Render / VPS (API, worker, Redis) + Neon / Supabase / RDS (Postgres)             |
+| Payments in-app (bKash/Nagad API) | after v1  | v1 only _records_ payments; online payment collection is a later feature                                     |

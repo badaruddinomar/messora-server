@@ -1,4 +1,5 @@
-import { VerificationPurpose } from "@prisma/client";
+import { type VerificationPurpose } from "@prisma/client";
+import { ERROR_CODES } from "../../constants/error-codes.js";
 import { prisma } from "../../lib/prisma.js";
 import { ApiError } from "../../utils/api-error.js";
 import { generateOtp, hashOtp } from "../../utils/crypto.js";
@@ -24,7 +25,10 @@ export async function issueOtp(params: { target: string; purpose: VerificationPu
     orderBy: { createdAt: "desc" },
   });
   if (latest && Date.now() - latest.createdAt.getTime() < RESEND_COOLDOWN_MS) {
-    throw new ApiError(429, "Please wait a minute before requesting another code");
+    throw ApiError.tooManyRequests(
+      "Please wait a minute before requesting another code",
+      ERROR_CODES.CODE_COOLDOWN,
+    );
   }
 
   const code = generateOtp();
@@ -50,7 +54,7 @@ export async function issueOtp(params: { target: string; purpose: VerificationPu
 /** Verifies and consumes the latest active code. Throws on wrong/expired code. */
 export async function consumeOtp(params: { target: string; purpose: VerificationPurpose; code: string }) {
   const { target, purpose, code } = params;
-  const invalid = () => ApiError.badRequest("Invalid or expired code");
+  const invalid = () => ApiError.badRequest("Invalid or expired code", ERROR_CODES.INVALID_CODE);
 
   const record = await prisma.verificationCode.findFirst({
     where: { target, purpose, consumedAt: null },

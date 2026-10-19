@@ -2,12 +2,20 @@ import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { UserStatus, VerificationPurpose, type User } from "@prisma/client";
 import { env } from "../../config/env.js";
+import { ERROR_CODES } from "../../constants/error-codes.js";
+import { logger } from "../../lib/logger.js";
 import { prisma } from "../../lib/prisma.js";
 import { resetPasswordTemplate, sendMail, verifyEmailTemplate } from "../../lib/mail/index.js";
 import { ApiError } from "../../utils/api-error.js";
 import { generateId, generateToken, hashToken } from "../../utils/crypto.js";
 import { consumeOtp, issueOtp, OTP_TTL_MINUTES } from "./auth.otp.js";
-import { emailField, phoneField, type LoginInput, type RegisterInput, type ResetPasswordInput } from "./auth.schema.js";
+import {
+  emailField,
+  phoneField,
+  type LoginInput,
+  type RegisterInput,
+  type ResetPasswordInput,
+} from "./auth.schema.js";
 import type { ClientInfo, PublicUser } from "./auth.types.js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -43,13 +51,18 @@ async function issueSession(user: User, client: ClientInfo, familyId: string = g
 }
 
 function assertActive(user: User) {
-  if (user.status === UserStatus.BLOCKED) throw ApiError.forbidden("Your account has been blocked");
+  if (user.status === UserStatus.BLOCKED)
+    throw ApiError.forbidden("Your account has been blocked", ERROR_CODES.ACCOUNT_BLOCKED);
   if (user.status === UserStatus.DELETED) throw ApiError.unauthorized("Account not found");
 }
 
 async function sendEmailVerification(user: User) {
   if (!user.email) throw ApiError.badRequest("Add an email address first");
-  const code = await issueOtp({ target: user.email, purpose: VerificationPurpose.EMAIL_VERIFY, userId: user.id });
+  const code = await issueOtp({
+    target: user.email,
+    purpose: VerificationPurpose.EMAIL_VERIFY,
+    userId: user.id,
+  });
   await sendMail({
     to: { email: user.email, name: user.name },
     subject: "Your Messora verification code",
@@ -83,7 +96,7 @@ export async function register(input: RegisterInput, client: ClientInfo) {
 
   if (user.email) {
     // Don't fail registration if the email provider is down; the user can resend.
-    sendEmailVerification(user).catch((err) => console.error("Failed to send verification email", err));
+    sendEmailVerification(user).catch((err) => logger.error({ err }, "Failed to send verification email"));
   }
 
   return issueSession(user, client);
@@ -92,15 +105,11 @@ export async function register(input: RegisterInput, client: ClientInfo) {
 export async function login({ identifier, password }: LoginInput, client: ClientInfo) {
   const asEmail = emailField.safeParse(identifier);
   const asPhone = phoneField.safeParse(identifier);
-  const where = asEmail.success
-    ? { email: asEmail.data }
-    : asPhone.success
-      ? { phone: asPhone.data }
-      : null;
+  const where = asEmail.success ? { email: asEmail.data } : asPhone.success ? { phone: asPhone.data } : null;
 
   const user = where ? await prisma.user.findFirst({ where }) : null;
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    throw ApiError.unauthorized("Invalid credentials");
+    throw ApiError.unauthorized("Invalid credentials", ERROR_CODES.INVALID_CREDENTIALS);
   }
   assertActive(user);
 
@@ -109,14 +118,14 @@ export async function login({ identifier, password }: LoginInput, client: Client
 
 /** Rotates the refresh token within its family. Reusing an old token revokes the whole family. */
 export async function refresh(refreshToken: string | undefined, client: ClientInfo) {
-  if (!refreshToken) throw ApiError.unauthorized("Missing refresh token");
+  if (!refreshToken) throw ApiError.unauthorized("Missing refresh token", ERROR_CODES.SESSION_EXPIRED);
 
   const record = await prisma.refreshToken.findUnique({
     where: { tokenHash: hashToken(refreshToken) },
     include: { user: true },
   });
   if (!record || record.expiresAt < new Date()) {
-    throw ApiError.unauthorized("Invalid or expired refresh token");
+    throw ApiError.unauthorized("Invalid or expired refresh token", ERROR_CODES.SESSION_EXPIRED);
   }
 
   if (record.revokedAt) {
@@ -124,7 +133,7 @@ export async function refresh(refreshToken: string | undefined, client: ClientIn
       where: { familyId: record.familyId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    throw ApiError.unauthorized("Session expired, please log in again");
+    throw ApiError.unauthorized("Session expired, please log in again", ERROR_CODES.SESSION_EXPIRED);
   }
 
   assertActive(record.user);
@@ -134,7 +143,8 @@ export async function refresh(refreshToken: string | undefined, client: ClientIn
     where: { id: record.id, revokedAt: null },
     data: { revokedAt: new Date() },
   });
-  if (count === 0) throw ApiError.unauthorized("Session expired, please log in again");
+  if (count === 0)
+    throw ApiError.unauthorized("Session expired, please log in again", ERROR_CODES.SESSION_EXPIRED);
 
   return issueSession(record.user, client, record.familyId);
 }
@@ -177,7 +187,11 @@ export async function forgotPassword(email: string) {
   // Same response whether or not the account exists, to avoid leaking which emails are registered.
   if (!user || user.status !== UserStatus.ACTIVE) return;
 
-  const code = await issueOtp({ target: email, purpose: VerificationPurpose.PASSWORD_RESET, userId: user.id });
+  const code = await issueOtp({
+    target: email,
+    purpose: VerificationPurpose.PASSWORD_RESET,
+    userId: user.id,
+  });
   await sendMail({
     to: { email, name: user.name },
     subject: "Your Messora password reset code",
@@ -187,7 +201,7 @@ export async function forgotPassword(email: string) {
 
 export async function resetPassword({ email, code, password }: ResetPasswordInput) {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw ApiError.badRequest("Invalid or expired code");
+  if (!user) throw ApiError.badRequest("Invalid or expired code", ERROR_CODES.INVALID_CODE);
 
   await consumeOtp({ target: email, purpose: VerificationPurpose.PASSWORD_RESET, code });
 
@@ -195,7 +209,10 @@ export async function resetPassword({ email, code, password }: ResetPasswordInpu
     prisma.user.update({
       where: { id: user.id },
       // Receiving the code also proves ownership of the email.
-      data: { passwordHash: await bcrypt.hash(password, 12), emailVerifiedAt: user.emailVerifiedAt ?? new Date() },
+      data: {
+        passwordHash: await bcrypt.hash(password, 12),
+        emailVerifiedAt: user.emailVerifiedAt ?? new Date(),
+      },
     }),
     // Sign out every device after a password change.
     prisma.refreshToken.updateMany({

@@ -4,6 +4,7 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(5000),
+  LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   CLIENT_URL: z.url(),
 
   DATABASE_URL: z.string().min(1),
@@ -26,6 +27,8 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
+  // The logger depends on env, so this is the one place that writes to the console directly.
+  // eslint-disable-next-line no-console
   console.error("Invalid environment variables:\n", z.prettifyError(parsed.error));
   process.exit(1);
 }

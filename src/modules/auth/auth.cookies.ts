@@ -11,7 +11,12 @@ const base: CookieOptions = {
 // Refresh token is only ever sent to the auth routes.
 const refreshPath = `${API_PREFIX}/auth`;
 
-export function setAuthCookies(res: Response, accessToken: string, refreshToken: string, refreshExpiresAt: Date) {
+export function setAuthCookies(
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+  refreshExpiresAt: Date,
+) {
   res.cookie(COOKIES.ACCESS_TOKEN, accessToken, { ...base, path: "/" });
   res.cookie(COOKIES.REFRESH_TOKEN, refreshToken, { ...base, path: refreshPath, expires: refreshExpiresAt });
 }
