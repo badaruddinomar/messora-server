@@ -22,8 +22,8 @@
 | #   | Phase                                            | Status |
 | --- | ------------------------------------------------ | ------ |
 | 0   | Project setup & authentication                   | ✅     |
-| 1   | Engineering foundations & design system          | 🔜     |
-| 2   | Mess & membership                                | ⬜     |
+| 1   | Engineering foundations & design system          | ✅     |
+| 2   | Mess & membership                                | 🔜     |
 | 3   | Billing months                                   | ⬜     |
 | 4   | Meals & daily menu                               | ⬜     |
 | 5   | Bazar (groceries)                                | ⬜     |
@@ -52,7 +52,7 @@
 
 ---
 
-## Phase 1 — Engineering foundations & design system 🔜
+## Phase 1 — Engineering foundations & design system ✅
 
 Build the shared building blocks **before** features, so every later screen and module is consistent from day one.
 
@@ -74,21 +74,22 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ### Frontend
 
-- [ ] Install the **design system** (see DESIGN_SYSTEM.md): shadcn/ui on Radix, lucide-react icons, sonner toasts, next-themes (light/dark), motion for animation
-- [ ] Replace the hand-made `Button`, `Field`, `Alert`, `Spinner` with design-system components; restyle the auth pages with them
-- [ ] Design tokens in `globals.css`: colors, radius, shadows, spacing; light and dark
-- [ ] **App shell**: desktop sidebar, mobile bottom navigation, top bar with mess switcher, user menu and notification bell
-- [ ] Shared building blocks: `PageHeader`, `EmptyState`, `ErrorState`, skeleton loaders, `DataTable` (TanStack Table), `ConfirmDialog`, `StatCard`, `MoneyText`, `DatePicker`, `FormField` wrappers for React Hook Form
-- [ ] Formatting helpers: `formatMoney` (৳ BDT), `formatDate` and relative time (date-fns)
-- [ ] RTK Query conventions: tag types, a `withMess(messId)` URL helper, global error toasts for 5xx and network errors
-- [ ] ESLint + Prettier (with the Tailwind class-sorting plugin), Vitest + Testing Library, Playwright e2e (port the current auth flow test)
-- [ ] GitHub Actions CI: lint, typecheck, unit tests, build
+- [x] Install the **design system** (see DESIGN_SYSTEM.md): shadcn/ui on Radix, lucide-react icons, sonner toasts, next-themes (light/dark), motion for animation
+- [x] Replace the hand-made `Button`, `Field`, `Alert`, `Spinner` with design-system components; restyle the auth pages with them
+- [x] Design tokens in `globals.css`: colors, radius, shadows, spacing; light and dark
+- [x] **App shell**: desktop sidebar, mobile bottom navigation, top bar with mess switcher, user menu and notification bell
+- [x] Shared building blocks: `PageHeader`, `EmptyState`, `ErrorState`, skeleton loaders, `DataTable` (TanStack Table), `ConfirmDialog`, `StatCard`, `MoneyText`, `DatePicker`, `FormField` wrappers for React Hook Form
+- [x] Formatting helpers: `formatMoney` (৳ BDT), `formatDate` and relative time (date-fns)
+- [x] RTK Query conventions: tag types, a `messUrl(messId, path)` URL helper, global error toasts for 5xx and network errors
+- [x] ESLint + Prettier (with the Tailwind class-sorting plugin), Vitest + Testing Library, Playwright e2e (port the current auth flow test)
+- [x] GitHub Actions CI: lint, typecheck, unit tests, build
+- [ ] Run the Playwright e2e suite in CI too (needs the API + a database in the client workflow; do it in Phase 15 at the latest)
 
 **Done when:** CI is green in both repos; the auth pages and app shell use only design-system components, in both light and dark mode, at 360 px and desktop widths; the tenant middleware and helpers have tests.
 
 ---
 
-## Phase 2 — Mess & membership
+## Phase 2 — Mess & membership 🔜
 
 ### Backend
 

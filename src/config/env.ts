@@ -12,6 +12,8 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL: z.string().default("15m"),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  /** Requests per 15 minutes per IP on sensitive auth routes. Raise it locally when running e2e tests. */
+  AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(20),
 
   COOKIE_SECURE: z
     .enum(["true", "false"])

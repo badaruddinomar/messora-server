@@ -17,4 +17,4 @@ export const createRateLimiter = ({ windowMs, limit }: { windowMs: number; limit
   });
 
 /** For routes that send email/SMS or check credentials. */
-export const strictLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, limit: 20 });
+export const strictLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, limit: env.AUTH_RATE_LIMIT });
