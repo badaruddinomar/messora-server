@@ -26,6 +26,8 @@ export async function createUser(overrides: Partial<Parameters<typeof prisma.use
   });
 }
 
+const OCT_1 = toDbDate("2026-10-01");
+
 /** A mess with an ADMIN owner and an OPEN month for October 2026. */
 export async function createMess(owner: User, overrides: { name?: string } = {}) {
   const n = next();
@@ -36,7 +38,9 @@ export async function createMess(owner: User, overrides: { name?: string } = {})
       joinCode: generateCode(),
       createdById: owner.id,
       settings: { create: {} },
-      members: { create: { userId: owner.id, role: MessRole.ADMIN, status: MemberStatus.ACTIVE } },
+      members: {
+        create: { userId: owner.id, role: MessRole.ADMIN, status: MemberStatus.ACTIVE, joinedAt: OCT_1 },
+      },
       months: {
         create: { year: 2026, month: 10, startDate: toDbDate("2026-10-01"), endDate: toDbDate("2026-10-31") },
       },
@@ -49,9 +53,27 @@ export async function createMess(owner: User, overrides: { name?: string } = {})
 export function addMember(
   messId: string,
   user: User,
-  { role = MessRole.MEMBER, status = MemberStatus.ACTIVE }: { role?: MessRole; status?: MemberStatus } = {},
+  {
+    role = MessRole.MEMBER,
+    status = MemberStatus.ACTIVE,
+    joinedAt = status === MemberStatus.ACTIVE ? "2026-10-01" : null,
+  }: { role?: MessRole; status?: MemberStatus; joinedAt?: string | null } = {},
 ) {
-  return prisma.messMember.create({ data: { messId, userId: user.id, role, status } });
+  return prisma.messMember.create({
+    data: { messId, userId: user.id, role, status, joinedAt: joinedAt ? toDbDate(joinedAt) : null },
+  });
+}
+
+/** Breakfast (½, 07:00), Lunch (1, 10:00) and Dinner (1, 17:00), like a new mess gets. */
+export async function createSlots(messId: string) {
+  const defaults = [
+    { name: "Breakfast", weight: 0.5, cutoffTime: "07:00" },
+    { name: "Lunch", weight: 1, cutoffTime: "10:00" },
+    { name: "Dinner", weight: 1, cutoffTime: "17:00" },
+  ];
+  return Promise.all(
+    defaults.map((slot, sortOrder) => prisma.mealSlot.create({ data: { messId, ...slot, sortOrder } })),
+  ).then((slots) => ({ breakfast: slots[0], lunch: slots[1], dinner: slots[2] }));
 }
 
 /** `Authorization` header for a user, without going through the login endpoint. */

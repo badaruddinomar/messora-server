@@ -5,7 +5,7 @@ import { notify } from "../../lib/notify.js";
 import { prisma, type DbClient } from "../../lib/prisma.js";
 import type { Membership } from "../../middlewares/tenant.js";
 import { ApiError } from "../../utils/api-error.js";
-import { fromDbDate, todayIn, toDbDate, type DateString } from "../../utils/date.js";
+import { addDays, fromDbDate, todayIn, toDbDate, type DateString } from "../../utils/date.js";
 import { periodAfter, periodContaining } from "./month-period.js";
 
 // ---------- DTO ----------
@@ -41,6 +41,9 @@ export type MonthDto = ReturnType<typeof toMonthDto>;
 
 // ---------- opening months ----------
 
+/** How far ahead dated records (e.g. planned meals) may go, in days. */
+export const PLANNING_DAYS = 7;
+
 async function messCalendar(db: DbClient, messId: string) {
   const mess = await db.mess.findUniqueOrThrow({
     where: { id: messId },
@@ -54,9 +57,14 @@ async function messCalendar(db: DbClient, messId: string) {
  * own as time passes, so meals and bazar can be recorded on the 1st even if last month isn't closed
  * yet. If nobody used the mess for a while, every month in between is created, so there are no gaps.
  * Safe to call concurrently: duplicate months are skipped by the (mess, year, month) unique key.
+ *
+ * `through` opens months up to a later date too (at most `PLANNING_DAYS` ahead), so a member can
+ * mark tomorrow's meals off on the last day of a month.
  */
-export async function ensureCurrentMonth(db: DbClient, messId: string) {
+export async function ensureCurrentMonth(db: DbClient, messId: string, through?: DateString) {
   const { today, monthStartDay } = await messCalendar(db, messId);
+  const limit = addDays(today, PLANNING_DAYS);
+  const target = through && through > today ? (through < limit ? through : limit) : today;
   const latest = await db.messMonth.findFirst({ where: { messId }, orderBy: { startDate: "desc" } });
 
   const toCreate = [];
@@ -69,7 +77,7 @@ export async function ensureCurrentMonth(db: DbClient, messId: string) {
     toCreate.push(first);
     period = first;
   }
-  while (period.endDate < today) {
+  while (period.endDate < target) {
     const next = periodAfter(period.endDate, monthStartDay);
     toCreate.push(next);
     period = next;
@@ -92,10 +100,16 @@ export async function ensureCurrentMonth(db: DbClient, messId: string) {
 
 /**
  * The month a dated record (meal, bazar, deposit…) belongs to. Throws when the date is before the
- * mess's first month or after the current one.
+ * mess's first month or more than `PLANNING_DAYS` ahead.
  */
 export async function monthForDate(db: DbClient, messId: string, date: DateString) {
-  await ensureCurrentMonth(db, messId);
+  const today = await ensureCurrentMonth(db, messId, date);
+  if (date > addDays(today, PLANNING_DAYS)) {
+    throw ApiError.unprocessable(
+      `You can plan at most ${PLANNING_DAYS} days ahead`,
+      ERROR_CODES.DATE_OUTSIDE_MONTHS,
+    );
+  }
   const month = await db.messMonth.findFirst({
     where: { messId, startDate: { lte: toDbDate(date) }, endDate: { gte: toDbDate(date) } },
   });

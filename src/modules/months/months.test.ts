@@ -192,7 +192,12 @@ describe("PATCH /months/:id/manager", () => {
 describe("guards for dated records", () => {
   it("finds the month a date belongs to, and rejects dates outside every month", async () => {
     const { mess, october } = await setup();
-    expect((await monthForDate(prisma, mess.id, "2026-10-31")).id).toBe(october.id);
+    expect((await monthForDate(prisma, mess.id, "2026-10-01")).id).toBe(october.id);
+    expect((await monthForDate(prisma, mess.id, "2026-10-26")).id).toBe(october.id);
+    // More than a week ahead is rejected, even inside the current month.
+    await expect(monthForDate(prisma, mess.id, "2026-10-31")).rejects.toMatchObject({
+      code: "DATE_OUTSIDE_MONTHS",
+    });
     await expect(monthForDate(prisma, mess.id, "2026-09-30")).rejects.toMatchObject({
       code: "DATE_OUTSIDE_MONTHS",
     });
@@ -226,5 +231,21 @@ describe("guards for dated records", () => {
 
     await prisma.messMonth.update({ where: { id: october.id }, data: { status: "CLOSED" } });
     await expect(assertEarlierMonthsClosed(prisma, november)).resolves.toBeUndefined();
+  });
+});
+
+describe("planning ahead", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    setNow("2026-10-30T08:00:00Z");
+  });
+
+  it("opens next month early for dates up to a week ahead, but no further", async () => {
+    const { mess } = await setup();
+    const nov2 = await monthForDate(prisma, mess.id, "2026-11-02");
+    expect(nov2).toMatchObject({ year: 2026, month: 11 });
+    await expect(monthForDate(prisma, mess.id, "2026-11-10")).rejects.toMatchObject({
+      code: "DATE_OUTSIDE_MONTHS",
+    });
   });
 });
