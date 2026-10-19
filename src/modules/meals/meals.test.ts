@@ -104,6 +104,8 @@ describe("GET /meals/day", () => {
       ["Dinner", false],
     ]);
     expect(day.slots[2].cutoffAt).toBe("2026-10-19T11:00:00.000Z");
+    expect(day.you).toEqual({ memberId: expect.any(String), defaultMealOn: true });
+    expect(day.slots[0].menu).toBeNull();
     expect(day.rows).toHaveLength(2);
     expect(day.rows[0].weightedMeals).toBe("2.5");
     expect(day.totals[slots.lunch.id]).toEqual({ meals: "2", guests: "0" });

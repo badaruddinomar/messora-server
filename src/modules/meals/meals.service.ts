@@ -73,12 +73,16 @@ export async function getDay(membership: Membership, date: DateString) {
   if (month.status === MonthStatus.OPEN) await generateUpTo(membership.messId, date, date, ctx.today);
 
   const dbDate = toDbDate(date);
-  const [entries, members] = await Promise.all([
+  const [entries, members, menus] = await Promise.all([
     prisma.mealEntry.findMany({ where: { messId: membership.messId, date: dbDate }, select: entrySelect }),
     prisma.messMember.findMany({
       where: { messId: membership.messId, joinedAt: { not: null, lte: dbDate } },
       select: { ...memberSelect, status: true },
       orderBy: { user: { name: "asc" } },
+    }),
+    prisma.dailyMenu.findMany({
+      where: { messId: membership.messId, date: dbDate },
+      select: { id: true, slotId: true, items: true, note: true },
     }),
   ]);
 
@@ -109,6 +113,10 @@ export async function getDay(membership: Membership, date: DateString) {
 
   const canManage = hasManagerAccess(membership);
   const editable = month.status === MonthStatus.OPEN;
+  const me = await prisma.messMember.findUnique({
+    where: { id: membership.id },
+    select: { defaultMealOn: true },
+  });
 
   return {
     date,
@@ -116,6 +124,7 @@ export async function getDay(membership: Membership, date: DateString) {
     editable,
     canEditOthers: editable && canManage,
     allowGuestMeal: ctx.allowGuestMeal,
+    you: { memberId: membership.id, defaultMealOn: me?.defaultMealOn ?? true },
     slots: slots.map((s) => {
       const locked = isPastCutoff(date, s.cutoffTime, ctx.timezone);
       return {
@@ -124,6 +133,7 @@ export async function getDay(membership: Membership, date: DateString) {
         isPastCutoff: locked,
         // Whether the caller can change their own meal for this slot right now.
         canEditOwn: editable && s.isActive && (canManage || (ctx.allowMemberMealEdit && !locked)),
+        menu: menus.find((m) => m.slotId === s.id) ?? null,
       };
     }),
     rows,
