@@ -27,8 +27,8 @@
 | 3   | Billing months                                   | ✅     |
 | 4   | Meals & daily menu                               | ✅     |
 | 5   | Bazar (groceries)                                | ✅     |
-| 6   | Deposits                                         | 🔜     |
-| 7   | Rooms, staff, shared expenses & charges          | ⬜     |
+| 6   | Deposits                                         | ✅     |
+| 7   | Rooms, staff, shared expenses & charges          | 🔜     |
 | 8   | Month close & settlement                         | ⬜     |
 | 9   | Dashboards & reports                             | ⬜     |
 | 10  | Notifications & notice board                     | ⬜     |
@@ -192,17 +192,20 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 6 — Deposits
+## Phase 6 — Deposits ✅
 
 ### Backend
 
-- [ ] Deposits: a member submits (amount, method such as bKash/Nagad/cash, transaction ref), a manager approves or rejects; managers can also record a deposit directly as APPROVED
-- [ ] `requireDepositApproval` setting, notifications, audit log
-- [ ] Tests
+- [x] Deposits: a member submits (amount, method such as bKash/Nagad/cash, transaction ref), a manager approves or rejects with a reason; managers can also record a deposit directly as APPROVED (they become the receiver)
+- [x] `requireDepositApproval` setting, notifications (`DEPOSIT_SUBMITTED` / `_APPROVED` / `_REJECTED`), audit log; the same non-cash transaction can't be recorded twice
+- [x] Edit and resubmit rules as for bazars (BUSINESS_RULES §10); members see only their own deposits
+- [x] Month so far: `calculateMonth()` (meal rate, largest-remainder meal costs, own-pocket bazar credit, carried-over balances, cash in hand) and `GET /months/:monthId/preview`; closing reuses it in Phase 8
+- [x] Tests
 
 ### Frontend
 
-- [ ] Deposit form, "My deposits" history, manager approval queue, per-member deposit totals for the month
+- [x] Deposit form (amount, method, transaction ID, day), "My deposits" history with filters in the URL, manager confirmation queue, per-member deposit totals for the month
+- [x] "Your balance so far" on the overview and deposits page; "Month so far" table for everyone on the months page
 
 **Done when:** approved deposits show up immediately in the member's balance preview (Phase 8 makes it final).
 
