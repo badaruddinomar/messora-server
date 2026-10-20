@@ -10,13 +10,13 @@ import { periodAfter, periodContaining } from "./month-period.js";
 
 // ---------- DTO ----------
 
-const monthInclude = {
+export const monthInclude = {
   manager: { select: { id: true, user: { select: { name: true, avatarUrl: true } } } },
 } satisfies Prisma.MessMonthInclude;
 
 type MonthRow = Prisma.MessMonthGetPayload<{ include: typeof monthInclude }>;
 
-function toMonthDto(month: MonthRow, today: DateString) {
+export function toMonthDto(month: MonthRow, today: DateString) {
   const startDate = fromDbDate(month.startDate);
   const endDate = fromDbDate(month.endDate);
   return {
@@ -31,6 +31,8 @@ function toMonthDto(month: MonthRow, today: DateString) {
     /** The month is over but hasn't been closed yet. */
     hasEnded: endDate < today,
     closedAt: month.closedAt,
+    /** Sent back when closing, so a month changed meanwhile isn't closed on stale numbers. */
+    version: month.version,
     manager: month.manager
       ? { memberId: month.manager.id, name: month.manager.user.name, avatarUrl: month.manager.user.avatarUrl }
       : null,
