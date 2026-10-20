@@ -1,17 +1,7 @@
 import { ApprovalStatus, PaidFrom } from "@prisma/client";
 import { z } from "zod";
 import { paginationQuery } from "../../utils/pagination.js";
-import { dateString } from "../meals/meals.schema.js";
-
-/**
- * Money comes in as a decimal string ("1250.50") or a number, and is kept as a string so it never
- * passes through floating point on the way to Prisma.Decimal.
- */
-export const money = z
-  .union([z.string().trim(), z.number()])
-  .transform(String)
-  .pipe(z.string().regex(/^\d{1,10}(\.\d{1,2})?$/, "Enter an amount like 1250 or 1250.50"))
-  .refine((v) => Number(v) > 0, "Must be more than 0");
+import { dateString, money } from "../../utils/schemas.js";
 
 const quantity = z
   .union([z.string().trim(), z.number()])

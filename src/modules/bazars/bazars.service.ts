@@ -7,12 +7,17 @@ import { prisma, type DbClient } from "../../lib/prisma.js";
 import { belongsTo, storage } from "../../lib/storage/index.js";
 import { hasManagerAccess, type Membership } from "../../middlewares/tenant.js";
 import { ApiError } from "../../utils/api-error.js";
-import { fromDbDate, todayIn, toDbDate, type DateString } from "../../utils/date.js";
+import { fromDbDate, toDbDate } from "../../utils/date.js";
 import { sumMoney } from "../../utils/money.js";
 import { orderedIds } from "../../utils/crypto.js";
 import { cursorArgs, toPage } from "../../utils/pagination.js";
 import { managerUserIds } from "../members/members.queries.js";
-import { assertMonthEditable, ensureCurrentMonth, monthForDate } from "../months/months.service.js";
+import {
+  assertMonthEditable,
+  ensureCurrentMonth,
+  monthForDate,
+  monthForPastEntry,
+} from "../months/months.service.js";
 import type { BazarItemInput, CreateBazarInput, ListBazarsQuery, UpdateBazarInput } from "./bazars.schema.js";
 
 const person = {
@@ -113,16 +118,6 @@ async function assertReceipt(messId: string, key: string) {
       ERROR_CODES.RECEIPT_NOT_FOUND,
     );
   }
-}
-
-async function bazarMonth(messId: string, date: DateString) {
-  const mess = await prisma.mess.findUniqueOrThrow({ where: { id: messId }, select: { timezone: true } });
-  if (date > todayIn(mess.timezone)) {
-    throw ApiError.unprocessable("A bazar can't be dated in the future", ERROR_CODES.DATE_IN_FUTURE);
-  }
-  const month = await monthForDate(prisma, messId, date);
-  assertMonthEditable(month);
-  return month;
 }
 
 async function activeShopper(membership: Membership, shopperId: string | undefined) {
@@ -232,7 +227,7 @@ export async function bazarSummary(membership: Membership, monthId: string | und
  */
 export async function createBazar(membership: Membership, input: CreateBazarInput) {
   const shopper = await activeShopper(membership, input.shopperId);
-  const month = await bazarMonth(membership.messId, input.date);
+  const month = await monthForPastEntry(prisma, membership.messId, input.date, "A bazar");
   const total = resolveTotal(input.items, input.totalAmount);
   if (input.receiptKey) await assertReceipt(membership.messId, input.receiptKey);
 
@@ -324,7 +319,7 @@ export async function updateBazar(membership: Membership, bazarId: string, input
   const canManage = hasManagerAccess(membership);
 
   const shopper = input.shopperId ? await activeShopper(membership, input.shopperId) : null;
-  const month = input.date ? await bazarMonth(membership.messId, input.date) : null;
+  const month = input.date ? await monthForPastEntry(prisma, membership.messId, input.date, "A bazar") : null;
   const items = input.items;
   let total: Prisma.Decimal | undefined;
   if (items !== undefined) {

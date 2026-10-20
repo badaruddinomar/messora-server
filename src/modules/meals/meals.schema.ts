@@ -1,10 +1,8 @@
 import { ApprovalStatus } from "@prisma/client";
 import { z } from "zod";
-import { isDateString } from "../../utils/date.js";
 import { paginationQuery } from "../../utils/pagination.js";
+import { dateString } from "../../utils/schemas.js";
 import { mealSlotInput } from "../messes/messes.schema.js";
-
-export const dateString = z.string().refine(isDateString, "Use a date like 2026-10-19");
 
 // ---------- slots ----------
 

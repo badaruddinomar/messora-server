@@ -154,6 +154,23 @@ closingCash = openingCash
 - The creator can edit an entry while it is `PENDING`. Managers can edit it in any state, as long as the month is `OPEN`.
 - Entries a manager adds are created `APPROVED` (they would approve them anyway).
 
+### Deposits
+
+- A deposit is dated today or earlier; its day in the mess timezone decides the month.
+- Members submit their own deposits (amount, method, transaction id for bKash/Nagad/Rocket/bank) for a manager to
+  confirm once the money has arrived (`DEPOSIT_SUBMITTED` → `DEPOSIT_APPROVED` / `DEPOSIT_REJECTED`). A deposit a
+  manager records is approved with them as the receiver, and the member is told.
+- The same non-cash transaction id can't be recorded twice for one method (`DUPLICATE_TRANSACTION`), unless the
+  earlier deposit was rejected.
+- Members see only their own deposits; managers see everyone's. Each member's approved total is public, as part of
+  the month summary.
+
+### Month so far
+
+- Until a month is closed, the app shows a live preview of §5 and §8–9 from what's approved so far: the meal rate,
+  every member's meal cost, deposits and running balance, and the cash in hand. It's labelled as an estimate.
+- Opening balances and opening cash carry over only from a CLOSED previous month.
+
 ### Bazar
 
 - A bazar is dated today or earlier (`DATE_IN_FUTURE`) and belongs to the month containing that date.

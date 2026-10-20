@@ -12,6 +12,7 @@ router.use(requireAuth);
 router.get("/", requireMessMember(), months.list);
 router.get("/current", requireMessMember(), months.current);
 router.get("/:monthId", requireMessMember(), validate({ params: monthParams }), months.get);
+router.get("/:monthId/preview", requireMessMember(), validate({ params: monthParams }), months.preview);
 router.patch(
   "/:monthId/manager",
   requireMessMember(ADMIN_ONLY),

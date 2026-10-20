@@ -2,6 +2,7 @@ import { Router } from "express";
 import authRoutes from "../modules/auth/auth.routes.js";
 import bazarRoutes from "../modules/bazars/bazars.routes.js";
 import bazarDutyRoutes from "../modules/bazars/duties.routes.js";
+import depositRoutes from "../modules/deposits/deposits.routes.js";
 import invitationRoutes, { messInvitationRoutes } from "../modules/invitations/invitations.routes.js";
 import mealRoutes, { mealSlotRoutes } from "../modules/meals/meals.routes.js";
 import memberRoutes from "../modules/members/members.routes.js";
@@ -25,6 +26,7 @@ router.use("/messes/:messId/meal-slots", mealSlotRoutes);
 router.use("/messes/:messId/uploads", messUploadRoutes);
 router.use("/messes/:messId/bazars", bazarRoutes);
 router.use("/messes/:messId/bazar-duties", bazarDutyRoutes);
+router.use("/messes/:messId/deposits", depositRoutes);
 router.use("/messes", messRoutes);
 
 export default router;

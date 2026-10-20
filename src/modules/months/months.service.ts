@@ -123,6 +123,20 @@ export async function monthForDate(db: DbClient, messId: string, date: DateStrin
 }
 
 /** Every meal or money change goes through this: only OPEN months can be edited (BUSINESS_RULES §3). */
+/**
+ * The OPEN month for a money record dated `date` (a bazar, a deposit): it can't be in the future, and
+ * its month must still be editable.
+ */
+export async function monthForPastEntry(db: DbClient, messId: string, date: DateString, what: string) {
+  const { timezone } = await db.mess.findUniqueOrThrow({ where: { id: messId }, select: { timezone: true } });
+  if (date > todayIn(timezone)) {
+    throw ApiError.unprocessable(`${what} can't be dated in the future`, ERROR_CODES.DATE_IN_FUTURE);
+  }
+  const month = await monthForDate(db, messId, date);
+  assertMonthEditable(month);
+  return month;
+}
+
 export function assertMonthEditable(month: Pick<MessMonth, "status">) {
   if (month.status !== MonthStatus.OPEN) {
     throw ApiError.unprocessable(

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { dateString } from "../meals/meals.schema.js";
+import { dateString } from "../../utils/schemas.js";
 
 export const dutiesQuery = z.object({ monthId: z.uuid().optional() });
 
