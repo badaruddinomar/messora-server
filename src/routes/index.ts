@@ -10,6 +10,7 @@ import mealRoutes, { mealSlotRoutes } from "../modules/meals/meals.routes.js";
 import memberRoutes from "../modules/members/members.routes.js";
 import messRoutes from "../modules/messes/messes.routes.js";
 import { localFileRoutes, messUploadRoutes, serveLocalFiles } from "../modules/uploads/uploads.routes.js";
+import reportRoutes from "../modules/reports/reports.routes.js";
 import roomRoutes from "../modules/rooms/rooms.routes.js";
 import { monthSettlementRoutes, settlementRoutes } from "../modules/settlement/settlement.routes.js";
 import staffRoutes from "../modules/staff/staff.routes.js";
@@ -37,6 +38,7 @@ router.use("/messes/:messId/rooms", roomRoutes);
 router.use("/messes/:messId/staff", staffRoutes);
 router.use("/messes/:messId/expenses", expenseRoutes);
 router.use("/messes/:messId/charges", chargeRoutes);
+router.use("/messes/:messId", reportRoutes);
 router.use("/messes/:messId", settlementRoutes);
 router.use("/messes", messRoutes);
 
