@@ -1,5 +1,6 @@
-import { MemberStatus, MessRole, MonthStatus } from "@prisma/client";
+import { MemberStatus, MessRole } from "@prisma/client";
 import type { DbClient } from "../../lib/prisma.js";
+import { MANAGED_STATUSES } from "../../middlewares/tenant.js";
 
 /** User ids of everyone with manager powers in a mess: ADMINs, MANAGERs and the OPEN month's manager. */
 export async function managerUserIds(db: DbClient, messId: string) {
@@ -9,7 +10,7 @@ export async function managerUserIds(db: DbClient, messId: string) {
       status: MemberStatus.ACTIVE,
       OR: [
         { role: { in: [MessRole.ADMIN, MessRole.MANAGER] } },
-        { managedMonths: { some: { status: MonthStatus.OPEN } } },
+        { managedMonths: { some: { status: { in: MANAGED_STATUSES } } } },
       ],
     },
     select: { userId: true },

@@ -25,7 +25,13 @@ export const ADMIN_ONLY = { roles: [MessRole.ADMIN] } as const satisfies Require
 /** The caller's membership on mess-scoped routes (set by `requireMessMember`). */
 export type Membership = NonNullable<Express.Request["membership"]>;
 
-/** Manager-level powers: ADMIN, MANAGER, or manager of the OPEN month (BUSINESS_RULES §2). */
+/**
+ * A month manager has manager powers while their month is OPEN, and while it's being closed so they
+ * can finish closing it (BUSINESS_RULES §2, §3).
+ */
+export const MANAGED_STATUSES: MonthStatus[] = [MonthStatus.OPEN, MonthStatus.CLOSING];
+
+/** Manager-level powers: ADMIN, MANAGER, or manager of an OPEN or CLOSING month (BUSINESS_RULES §2). */
 export const hasManagerAccess = (m: Pick<Membership, "role" | "isMonthManager">) =>
   m.role === MessRole.ADMIN || m.role === MessRole.MANAGER || m.isMonthManager;
 
@@ -61,7 +67,7 @@ export const requireMessMember =
     const isMonthManager =
       member.role === MessRole.MEMBER &&
       !!(await prisma.messMonth.findFirst({
-        where: { messId: member.messId, status: MonthStatus.OPEN, managerId: member.id },
+        where: { messId: member.messId, status: { in: MANAGED_STATUSES }, managerId: member.id },
         select: { id: true },
       }));
 

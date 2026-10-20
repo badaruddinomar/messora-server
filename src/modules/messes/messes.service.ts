@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { MemberStatus, MessRole, MonthStatus, Prisma, type Mess } from "@prisma/client";
+import { MemberStatus, MessRole, Prisma, type Mess } from "@prisma/client";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { audit } from "../../lib/audit.js";
 import { prisma, type DbClient } from "../../lib/prisma.js";
-import { hasManagerAccess, type Membership } from "../../middlewares/tenant.js";
+import { hasManagerAccess, type Membership, MANAGED_STATUSES } from "../../middlewares/tenant.js";
 import { ApiError } from "../../utils/api-error.js";
 import { generateCode } from "../../utils/crypto.js";
 import { todayIn, toDbDate } from "../../utils/date.js";
@@ -146,7 +146,7 @@ export async function listMyMesses(userId: string) {
     },
     include: {
       mess: { include: activeMemberCount },
-      managedMonths: { where: { status: MonthStatus.OPEN }, select: { id: true } },
+      managedMonths: { where: { status: { in: MANAGED_STATUSES } }, select: { id: true } },
     },
     orderBy: { createdAt: "asc" },
   });

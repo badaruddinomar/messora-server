@@ -59,8 +59,8 @@ Effective roles: **ADMIN**, **MANAGER**, **MONTH MANAGER** (the member set as `M
   ends, and runs until the next new start day that is in a later calendar month and at least 14 days away, so there is
   no overlap, no gap and no stub month. Example: months on the 1st, switched to the 5th → November runs Nov 1 – Dec 4,
   then December starts on Dec 5.
-- **Month manager.** An ADMIN can assign one active member as a month's manager. While that month is `OPEN`, they
-  have manager powers (BUSINESS_RULES §2) even if their role is MEMBER. A closed month's manager can't be changed.
+- **Month manager.** An ADMIN can assign one active member as a month's manager. While that month is `OPEN` or
+  `CLOSING`, they have manager powers (BUSINESS_RULES §2) even if their role is MEMBER. A closed month's manager can't be changed.
 
 ## 4. Meals
 
