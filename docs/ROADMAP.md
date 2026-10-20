@@ -29,8 +29,8 @@
 | 5   | Bazar (groceries)                                | ✅     |
 | 6   | Deposits                                         | ✅     |
 | 7   | Rooms, staff, shared expenses & charges          | ✅     |
-| 8   | Month close & settlement                         | 🔜     |
-| 9   | Dashboards & reports                             | ⬜     |
+| 8   | Month close & settlement                         | ✅     |
+| 9   | Dashboards & reports                             | 🔜     |
 | 10  | Notifications & notice board                     | ⬜     |
 | 11  | Chat                                             | ⬜     |
 | 12  | Account, profile & phone verification            | ⬜     |
@@ -232,26 +232,27 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 8 — Month close & settlement ⭐ (the core of the product)
+## Phase 8 — Month close & settlement ⭐ (the core of the product) ✅
 
 ### Backend
 
-- [ ] A **calculation engine** as pure, framework-free functions (`modules/settlement/engine.ts`) that implements BUSINESS_RULES §5–§8 exactly
-  - [ ] 100% unit-test coverage of the engine, including rounding, members who join or leave mid-month, zero meals, own-pocket spending, negative adjustments, and carried-over balances
-- [ ] `GET /months/:monthId/preview`: a live calculation for an OPEN month (what everyone owes so far)
-- [ ] `POST /months/:monthId/start-closing` (→ CLOSING, locks edits), `POST /reopen` (CLOSING → OPEN, ADMIN only)
-- [ ] `POST /months/:monthId/close`: in **one transaction** with an optimistic lock on `version`, write the `MemberMonthSummary` snapshots and the month totals, set the month to CLOSED, and open the next month. Notify everyone with `MONTH_CLOSED`.
-- [ ] Settlement payments against a summary (due paid / refund given); update `settledAmount` and `isSettled`
-- [ ] Fund handover between managers (expected vs handed amount, confirm or dispute)
-- [ ] Due-reminder job (`dueReminderDay`)
+- [x] A **calculation engine** as pure, framework-free functions (`modules/settlement/engine.ts`) that implements BUSINESS_RULES §5–§8 exactly
+  - [x] 100% unit-test coverage of the engine, including rounding, members who join or leave mid-month, zero meals, own-pocket spending, negative adjustments, and carried-over balances
+- [x] `GET /months/:monthId/preview`: a live calculation for an OPEN month (what everyone owes so far)
+- [x] `POST /months/:monthId/start-closing` (→ CLOSING, locks edits), `POST /reopen` (CLOSING → OPEN, ADMIN only)
+- [x] `POST /months/:monthId/close`: in **one transaction** with an optimistic lock on `version`, write the `MemberMonthSummary` snapshots and the month totals, set the month to CLOSED, and open the next month. Notify everyone with `MONTH_CLOSED`.
+- [x] Settlement payments against a summary (due paid / refund given); update `settledAmount` and `isSettled`
+- [x] Fund handover between managers (expected vs handed amount, confirm or dispute)
+- [x] Due-reminder job (`dueReminderDay`)
 
 ### Frontend
 
-- [ ] **Month summary** screen: meal rate, totals, a per-member table (meals, meal cost, shared cost, charges, deposits, balance) with colour-coded due and refund
-- [ ] Close-month wizard: review warnings (pending bazars or deposits, members with no meals) → start closing → confirm → done
-- [ ] Settlement screen: record payments, filter settled / unsettled
-- [ ] Member's own bill view with a line-by-line breakdown ("why do I owe this?")
-- [ ] Fund handover flow
+- [x] **Month summary** screen: meal rate, totals, a per-member table (meals, meal cost, shared cost, charges, deposits, balance) with colour-coded due and refund
+- [x] Close-month wizard: review warnings (pending bazars or deposits, members with no meals) → start closing → confirm → done
+- [x] Settlement screen: record payments, filter settled / unsettled
+- [x] Member's own bill view with a line-by-line breakdown ("why do I owe this?")
+- [x] Fund handover flow
+- [x] Due banner on the overview (what you owe or are owed from the last closed month), links from the months page to each month, and an e2e test that closes a month and settles it
 
 **Done when:** closing a month written up by hand on paper gives the same numbers in Messora (keep 2–3 real-world fixtures as tests); a closed month is never recalculated.
 
