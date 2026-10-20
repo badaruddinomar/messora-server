@@ -30,8 +30,8 @@
 | 6   | Deposits                                         | ✅     |
 | 7   | Rooms, staff, shared expenses & charges          | ✅     |
 | 8   | Month close & settlement                         | ✅     |
-| 9   | Dashboards & reports                             | 🔜     |
-| 10  | Notifications & notice board                     | ⬜     |
+| 9   | Dashboards & reports                             | ✅     |
+| 10  | Notifications & notice board                     | 🔜     |
 | 11  | Chat                                             | ⬜     |
 | 12  | Account, profile & phone verification            | ⬜     |
 | 13  | Audit log & super admin                          | ⬜     |
@@ -258,13 +258,13 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 9 — Dashboards & reports
+## Phase 9 — Dashboards & reports ✅
 
-- [ ] **Member dashboard:** today's meals and menu, my balance so far this month, my next bazar duty, latest notices
-- [ ] **Manager dashboard:** cash in hand, pending approvals (bazar, deposits, joins, meal requests), today's meal count per slot (for the cook), meal-rate trend
-- [ ] Charts (meal rate over months, expense by category, bazar per day), following the dataviz guidelines in DESIGN_SYSTEM.md
-- [ ] Reports: monthly summary, member statement, bazar list, as print-friendly pages + **PDF** and **CSV** export
-- [ ] Backend aggregate endpoints, tuned with the right indexes (check the query plans)
+- [x] **Member dashboard:** today's meals and menu, my balance so far this month, my next bazar duty (latest notices come with the notice board in Phase 10)
+- [x] **Manager dashboard:** cash in hand, pending approvals (bazar, deposits, joins, meal requests), today's meal count per slot (for the cook), meal-rate trend
+- [x] Charts (meal rate over months, expense by category, bazar per day), following the dataviz guidelines in DESIGN_SYSTEM.md
+- [x] Reports: monthly summary, member statement, bazar list, as print-friendly pages + **PDF** (via the browser's print dialog, from a print stylesheet) and **CSV** export
+- [x] Backend aggregate endpoints, tuned with the right indexes (check the query plans): every query uses an existing index, so the schema is unchanged
 
 **Done when:** a manager can answer "who owes what" and "how much cash do I hold" from the dashboard without opening other pages.
 
