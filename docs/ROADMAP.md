@@ -28,8 +28,8 @@
 | 4   | Meals & daily menu                               | ✅     |
 | 5   | Bazar (groceries)                                | ✅     |
 | 6   | Deposits                                         | ✅     |
-| 7   | Rooms, staff, shared expenses & charges          | 🔜     |
-| 8   | Month close & settlement                         | ⬜     |
+| 7   | Rooms, staff, shared expenses & charges          | ✅     |
+| 8   | Month close & settlement                         | 🔜     |
 | 9   | Dashboards & reports                             | ⬜     |
 | 10  | Notifications & notice board                     | ⬜     |
 | 11  | Chat                                             | ⬜     |
@@ -211,21 +211,22 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 7 — Rooms, staff, shared expenses & charges
+## Phase 7 — Rooms, staff, shared expenses & charges ✅
 
 ### Backend
 
-- [ ] Rooms & seats CRUD, assign or unassign a member to a seat, monthly rent
-- [ ] Staff CRUD (cook, maid, …) with monthly salary
-- [ ] Shared expenses: category, amount, split type `EQUAL | BY_MEAL | CUSTOM`, `paidFrom`, receipt. For `CUSTOM`, the shares must add up to the amount exactly.
-- [ ] Salary shortcut: "Pay staff" creates a `SharedExpense` linked to `staffId`
-- [ ] Member charges: seat rent (prorated, BUSINESS_RULES §6), fine, personal, adjustment (can be negative)
-- [ ] Tests: split rounding (shares always add up to the total), proration
+- [x] Rooms & seats CRUD (ADMIN), assign or empty a seat, monthly rent; a member who leaves is charged seat rent up to their last day and the seat is freed
+- [x] Staff CRUD (ADMIN) with monthly salary; members see staff without phone numbers
+- [x] Shared expenses (managers): category, amount, split type `EQUAL | BY_MEAL | CUSTOM`, `paidFrom` (+ who paid), receipt. `CUSTOM` shares must add up to the amount exactly; `EQUAL`/`BY_MEAL` are computed from the month; live split preview endpoint
+- [x] Salary shortcut: "Pay staff" creates a `SharedExpense` linked to `staffId` (once a month unless confirmed)
+- [x] Member charges: fine, personal, adjustment (can be negative); seat rent (prorated, BUSINESS_RULES §6) is estimated in the month preview and charged at closing
+- [x] Month calculation now includes shared costs, charges, seat rent, own-pocket expenses and mess-fund expenses
+- [x] Tests: split rounding (shares always add up to the total), proration, custom shares, pay staff, charges
 
 ### Frontend
 
-- [ ] Rooms & seats board, staff list, expense form with a live split preview, and a charges list
-- [ ] Expense breakdown by category
+- [x] Rooms & seats board (occupancy, rent roll, assign and move members), staff list with one-tap salary payment, expense form with a live split preview, and a charges list
+- [x] Expense breakdown by category, your share of each expense, seat rent and charges in "Your balance so far"
 
 **Done when:** every cost type that feeds the month close can be entered and edited.
 
