@@ -206,7 +206,12 @@ describe("CSV exports", () => {
     const bazars = await request(app)
       .get(`${base(mess.id)}/months/${november.id}/export/bazars`)
       .set(authHeader(bUser));
-    expect(bazars.text.replace(/^\uFEFF/, "").split("\r\n").slice(0, 3)).toEqual([
+    expect(
+      bazars.text
+        .replace(/^\uFEFF/, "")
+        .split("\r\n")
+        .slice(0, 3),
+    ).toEqual([
       "Date,Shopper,Amount,Paid from,Status,Items,Note",
       "2026-11-02,Anis,300.00,Mess fund,Approved,,",
       "2026-11-04,Anis,50.00,Mess fund,Pending,,",

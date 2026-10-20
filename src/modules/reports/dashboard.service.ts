@@ -11,9 +11,9 @@ import { listSettlements } from "../settlement/settlements.service.js";
 const money = (d: Decimal) => d.toFixed(2);
 
 /**
- * Everything the overview needs in one request (ROADMAP Phase 9). Every member gets their own
- * numbers so far this month, today's meals and their next bazar duty. Managers also get what they
- * act on: cash in hand, what's waiting for them, who owes what, and the last closed month's dues.
+ * The overview's numbers in one request (ROADMAP Phase 9). Every member gets their own numbers so
+ * far this month and their next bazar duty (today's meals have their own card). Managers also get
+ * what they act on: cash in hand, what's waiting, who owes what, and the last closed month's dues.
  */
 export async function getDashboard(membership: Membership) {
   const { messId } = membership;
@@ -27,17 +27,8 @@ export async function getDashboard(membership: Membership) {
   await generateMonthToToday(prisma, month);
   const canManage = hasManagerAccess(membership);
 
-  const [calc, slots, todayEntries, nextDuty, lastClosed] = await Promise.all([
+  const [calc, nextDuty, lastClosed] = await Promise.all([
     calculateMonth(prisma, month.id),
-    prisma.mealSlot.findMany({
-      where: { messId, isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true },
-    }),
-    prisma.mealEntry.findMany({
-      where: { messId, date: dbToday },
-      select: { memberId: true, slotId: true, quantity: true, guestQuantity: true },
-    }),
     prisma.bazarSchedule.findFirst({
       where: { messId, memberId: membership.id, date: { gte: dbToday }, isDone: false },
       orderBy: { date: "asc" },
@@ -51,23 +42,10 @@ export async function getDashboard(membership: Membership) {
   ]);
 
   const mine = calc.rows.find((r) => r.memberId === membership.id);
-  const todayMeals = slots.map((s) => {
-    const forSlot = todayEntries.filter((e) => e.slotId === s.id);
-    const own = forSlot.find((e) => e.memberId === membership.id);
-    return {
-      slot: s,
-      meals: sumMoney(forSlot.map((e) => e.quantity)).toString(),
-      guests: sumMoney(forSlot.map((e) => e.guestQuantity)).toString(),
-      eating: forSlot.filter((e) => !e.quantity.isZero() || !e.guestQuantity.isZero()).length,
-      yours: own ? new Decimal(own.quantity).plus(own.guestQuantity).toString() : "0",
-    };
-  });
-
   return {
     month: toMonthDto(month, today),
     today,
     mealRate: calc.mealRate.toFixed(4),
-    todayMeals,
     you: {
       weightedMeals: (mine?.weightedMeals ?? new Decimal(0)).toString(),
       mealCost: money(mine?.mealCost ?? new Decimal(0)),
