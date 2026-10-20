@@ -11,6 +11,7 @@ import memberRoutes from "../modules/members/members.routes.js";
 import messRoutes from "../modules/messes/messes.routes.js";
 import { localFileRoutes, messUploadRoutes, serveLocalFiles } from "../modules/uploads/uploads.routes.js";
 import roomRoutes from "../modules/rooms/rooms.routes.js";
+import { monthSettlementRoutes, settlementRoutes } from "../modules/settlement/settlement.routes.js";
 import staffRoutes from "../modules/staff/staff.routes.js";
 import monthRoutes from "../modules/months/months.routes.js";
 
@@ -24,6 +25,7 @@ if (serveLocalFiles) router.use("/files", localFileRoutes);
 // Mess-scoped modules first, so their paths don't fall through the /messes router.
 router.use("/messes/:messId/members", memberRoutes);
 router.use("/messes/:messId/invitations", messInvitationRoutes);
+router.use("/messes/:messId/months/:monthId", monthSettlementRoutes);
 router.use("/messes/:messId/months", monthRoutes);
 router.use("/messes/:messId/meals", mealRoutes);
 router.use("/messes/:messId/meal-slots", mealSlotRoutes);
@@ -35,6 +37,7 @@ router.use("/messes/:messId/rooms", roomRoutes);
 router.use("/messes/:messId/staff", staffRoutes);
 router.use("/messes/:messId/expenses", expenseRoutes);
 router.use("/messes/:messId/charges", chargeRoutes);
+router.use("/messes/:messId", settlementRoutes);
 router.use("/messes", messRoutes);
 
 export default router;

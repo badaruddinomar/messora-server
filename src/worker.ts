@@ -1,5 +1,6 @@
 import { Worker, type Queue } from "bullmq";
 import { runBazarDutyReminders } from "./jobs/bazar-duty-reminder.job.js";
+import { runDueReminders } from "./jobs/due-reminder.job.js";
 import { runMealGeneration } from "./jobs/meal-generation.job.js";
 import { connection, createQueue, JOBS, QUEUES, type QueueName } from "./jobs/queues.js";
 import { logger } from "./lib/logger.js";
@@ -23,6 +24,7 @@ const SCHEDULE: ScheduledJob[] = [
     pattern: "10 * * * *",
     run: () => runBazarDutyReminders(),
   },
+  { queue: QUEUES.reminders, name: JOBS.dueReminders, pattern: "15 * * * *", run: () => runDueReminders() },
 ];
 
 const jobOpts = { removeOnComplete: 48, removeOnFail: 100 };

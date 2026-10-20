@@ -149,6 +149,37 @@ closingBalance = openingBalance + totalDeposit − (mealCost + sharedCost + char
 - A member who left keeps their summary. Their balance carries over until it is settled.
 - Closing writes `MemberMonthSummary` rows plus `totalBazar`, `totalMeals`, `mealRate`, `totalExpenses`, `openingCash` and `closingCash` on the month, all in one transaction guarded by `version`. **A CLOSED month is never recalculated.**
 
+### Closing a month
+
+1. **Checks.** The month must have ended, every earlier month must be `CLOSED`, and nothing may be waiting for
+   approval (nothing can be approved once closing starts). Warnings that don't block: members with no meals, and a
+   month with bazar but no meals at all (§5).
+2. **Start closing** (manager): `OPEN → CLOSING`. The month's usual meals are filled in for every day, and every meal
+   or money change for it is rejected from now on. An ADMIN can reopen it (`CLOSING → OPEN`).
+3. **Close** (manager): in one transaction, guarded by the month's `version` (it must match the numbers the manager
+   reviewed): seat rent becomes `SEAT_RENT` charges, each member's bill is written as a `MemberMonthSummary`, the
+   month's totals (`totalBazar`, `totalMeals`, `mealRate`, `totalExpenses`, `openingCash`, `closingCash`) are stored,
+   and the month becomes `CLOSED`. Everyone gets `MONTH_CLOSED` with their balance.
+
+A closed month is shown from its stored summaries and totals; nothing is recalculated.
+
+### Settling balances
+
+- A manager records money changing hands against a closed month's summary: a member paying a due
+  (`MEMBER_TO_MESS`) or the mess refunding a credit (`MESS_TO_MEMBER`). A payment can't exceed what's left;
+  `settledAmount` and `isSettled` follow.
+- A payment belongs to the month it's made in (it moves that month's cash, §9), and adjusts the opening balance the
+  member carries into the next month (§8).
+- A balance can be settled while the month after it is still open. Once that month closes, what's left has carried
+  into its bill and is settled there instead (`BALANCE_CARRIED_OVER`).
+- On `dueReminderDay` (09:00 mess time), members who still owe from the latest closed month get a `DUE_REMINDER`.
+
+### Fund handover
+
+After a month is closed, the manager hands the mess's cash to the next one. The app records the expected amount (the
+month's `closingCash`) against the handed amount; the receiver confirms it or disputes it with a note. One handover
+per month (a disputed one can be redone).
+
 ## 9. Cash in hand (mess fund)
 
 ```

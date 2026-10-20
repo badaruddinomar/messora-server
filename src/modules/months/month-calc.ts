@@ -31,7 +31,8 @@ export async function calculateMonth(db: DbClient, monthId: string) {
     db.messMonth.findFirst({
       where: { messId: month.messId, startDate: { lt: month.startDate } },
       orderBy: { startDate: "desc" },
-      include: { summaries: true, settlements: true },
+      // Payments against a summary are filed under the month they were made in, so go through the summary.
+      include: { summaries: { include: { settlements: true } } },
     }),
     db.mealEntry.findMany({
       where: { monthId },
@@ -67,13 +68,7 @@ export async function calculateMonth(db: DbClient, monthId: string) {
   const previousClosed = previous?.status === MonthStatus.CLOSED;
   const openingBalances = new Map(
     previousClosed
-      ? previous.summaries.map((s) => [
-          s.memberId,
-          carriedBalance(
-            s.closingBalance,
-            previous.settlements.filter((p) => p.summaryId === s.id),
-          ),
-        ])
+      ? previous.summaries.map((s) => [s.memberId, carriedBalance(s.closingBalance, s.settlements)])
       : [],
   );
 

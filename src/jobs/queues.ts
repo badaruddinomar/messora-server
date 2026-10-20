@@ -5,7 +5,11 @@ import { env } from "../config/env.js";
 export const connection = { url: env.REDIS_URL, maxRetriesPerRequest: null };
 
 export const QUEUES = { meals: "meals", reminders: "reminders" } as const;
-export const JOBS = { generateMeals: "generate-meals", bazarDutyReminders: "bazar-duty-reminders" } as const;
+export const JOBS = {
+  generateMeals: "generate-meals",
+  bazarDutyReminders: "bazar-duty-reminders",
+  dueReminders: "due-reminders",
+} as const;
 
 export type QueueName = (typeof QUEUES)[keyof typeof QUEUES];
 
