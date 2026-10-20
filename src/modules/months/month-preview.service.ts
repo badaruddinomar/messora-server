@@ -1,10 +1,8 @@
-import { MonthStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import type { Membership } from "../../middlewares/tenant.js";
 import { ApiError } from "../../utils/api-error.js";
-import { fromDbDate, todayIn } from "../../utils/date.js";
 import type { Decimal } from "../../utils/money.js";
-import { generateMealEntries } from "../meals/meals.generation.js";
+import { generateMonthToToday } from "../meals/meals.generation.js";
 import { calculateMonth } from "./month-calc.js";
 
 const money = (d: Decimal) => d.toFixed(2);
@@ -19,15 +17,7 @@ export async function getMonthPreview(membership: Membership, monthId: string) {
 
   // Usual meals up to today are filled in first, as when a day is opened, so the meal rate never
   // waits for the worker.
-  if (month.status === MonthStatus.OPEN) {
-    const { timezone } = await prisma.mess.findUniqueOrThrow({
-      where: { id: month.messId },
-      select: { timezone: true },
-    });
-    const today = todayIn(timezone);
-    const end = fromDbDate(month.endDate);
-    await generateMealEntries(prisma, month.messId, fromDbDate(month.startDate), today < end ? today : end);
-  }
+  await generateMonthToToday(prisma, month);
   const calc = await calculateMonth(prisma, monthId);
 
   const people = new Map(
@@ -42,6 +32,7 @@ export async function getMonthPreview(membership: Membership, monthId: string) {
       totalMeals: calc.totalMeals.toString(),
       mealRate: calc.mealRate.toFixed(4),
       totalDeposits: money(calc.totalDeposits),
+      totalExpenses: money(calc.totalExpenses),
     },
     pending: {
       bazars: { count: calc.pending.bazars.count, total: money(calc.pending.bazars.total) },
@@ -59,8 +50,10 @@ export async function getMonthPreview(membership: Membership, monthId: string) {
         mealCost: money(r.mealCost),
         sharedCost: money(r.sharedCost),
         chargeTotal: money(r.chargeTotal),
+        seatRentEstimate: money(r.seatRentEstimate),
         deposits: money(r.deposits),
         ownPocketBazar: money(r.ownPocketBazar),
+        ownPocketExpenses: money(r.ownPocketExpenses),
         totalDeposit: money(r.totalDeposit),
         openingBalance: money(r.openingBalance),
         closingBalance: money(r.closingBalance),

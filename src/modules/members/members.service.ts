@@ -8,6 +8,7 @@ import { ApiError } from "../../utils/api-error.js";
 import { fromDbDate, todayIn, toDbDate } from "../../utils/date.js";
 import { addToGroupChat, removeFromGroupChat } from "../chat/chat.membership.js";
 import { toMessDto } from "../messes/messes.service.js";
+import { settleSeatOnLeave } from "../rooms/rooms.service.js";
 import { activeAdminCount, managerUserIds } from "./members.queries.js";
 
 // ---------- DTO ----------
@@ -261,6 +262,7 @@ async function endMembership(
   tx: DbClient,
   member: { id: string; messId: string; userId: string; role: MessRole; status: MemberStatus },
   reason: string | undefined,
+  actorUserId: string,
 ) {
   await assertNotLastAdmin(tx, member);
   const today = todayIn(await messTimezone(tx, member.messId));
@@ -273,6 +275,7 @@ async function endMembership(
       role: MessRole.MEMBER,
     },
   });
+  await settleSeatOnLeave(tx, member.id, actorUserId);
   await removeFromGroupChat(tx, member.messId, member.userId);
 }
 
@@ -285,7 +288,7 @@ export async function removeMember(membership: Membership, memberId: string, rea
     if (member.status !== MemberStatus.ACTIVE && member.status !== MemberStatus.SUSPENDED) {
       throw ApiError.conflict("This person isn't a member");
     }
-    await endMembership(tx, member, reason);
+    await endMembership(tx, member, reason, membership.userId);
     await audit(tx, {
       messId: membership.messId,
       actorId: membership.userId,
@@ -299,7 +302,7 @@ export async function removeMember(membership: Membership, memberId: string, rea
 
 export async function leaveMess(membership: Membership, reason?: string) {
   await prisma.$transaction(async (tx) => {
-    await endMembership(tx, membership, reason);
+    await endMembership(tx, membership, reason, membership.userId);
     await audit(tx, {
       messId: membership.messId,
       actorId: membership.userId,

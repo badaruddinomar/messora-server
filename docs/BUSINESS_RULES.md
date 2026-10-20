@@ -100,6 +100,14 @@ mealRate     = totalBazar / totalMeals          (stored with 4 decimals)
 - **Seat rent:** when a month is closed, a `SEAT_RENT` charge is created for every member who held a seat during the month. If `prorateSeatRent` is on and the member joined or left during the month:
   `rent × daysPresent / daysInMonth`, with `periodFrom`/`periodTo` and `isProrated = true`.
 - Other charges (`FINE`, `PERSONAL`, `ADJUSTMENT`) are entered by managers. `ADJUSTMENT` may be negative (a discount or correction).
+- A member's seat is where they live now (`MessMember.seatId`); there's no seat history. So:
+  - a member who **leaves** with a seat is charged that month's `SEAT_RENT` right away, up to their last day, and the
+    seat is freed;
+  - everyone else is charged at closing for the seat they hold then; a move within a month charges the seat held at
+    the end, and a rent change applies from the next month that is closed;
+  - until closing, the month-so-far preview estimates each member's seat rent the same way.
+- Rooms, seats and staff are managed by ADMINs. A seat holds one member; a taken seat has to be emptied before
+  someone else is put in it.
 
 ## 7. Shared expenses
 
@@ -108,6 +116,14 @@ A member **takes part** in a month if they were ACTIVE on at least one day of it
 - `EQUAL`: split equally between the members who took part.
 - `BY_MEAL`: split in proportion to each member's weighted meals. If nobody had meals, it falls back to `EQUAL`.
 - `CUSTOM`: explicit `ExpenseShare` rows. These must add up exactly to `amount`, which is checked on create and update.
+
+- `EQUAL` and `BY_MEAL` shares are worked out whenever the month is calculated (who took part and the meals can
+  change until it closes); only `CUSTOM` shares are stored.
+- An expense paid `OWN_POCKET` names who paid (`paidByMemberId`); they're credited with it as a deposit (§8).
+- **Pay staff** records a salary as a shared expense linked to the staff member (category from their role). Paying the
+  same person twice in one month must be confirmed (an advance or a bonus).
+- Shared expenses and charges are added by managers; everyone can see the expenses, members see only their own
+  charges.
 
 **Splitting algorithm (largest remainder):** compute each share exactly, round each one _down_ to 0.01, then hand out the leftover cents one at a time to the shares with the largest remainders (ties go to the lower `memberId`). Σ shares = amount, always.
 

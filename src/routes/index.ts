@@ -2,12 +2,16 @@ import { Router } from "express";
 import authRoutes from "../modules/auth/auth.routes.js";
 import bazarRoutes from "../modules/bazars/bazars.routes.js";
 import bazarDutyRoutes from "../modules/bazars/duties.routes.js";
+import chargeRoutes from "../modules/charges/charges.routes.js";
 import depositRoutes from "../modules/deposits/deposits.routes.js";
+import expenseRoutes from "../modules/expenses/expenses.routes.js";
 import invitationRoutes, { messInvitationRoutes } from "../modules/invitations/invitations.routes.js";
 import mealRoutes, { mealSlotRoutes } from "../modules/meals/meals.routes.js";
 import memberRoutes from "../modules/members/members.routes.js";
 import messRoutes from "../modules/messes/messes.routes.js";
 import { localFileRoutes, messUploadRoutes, serveLocalFiles } from "../modules/uploads/uploads.routes.js";
+import roomRoutes from "../modules/rooms/rooms.routes.js";
+import staffRoutes from "../modules/staff/staff.routes.js";
 import monthRoutes from "../modules/months/months.routes.js";
 
 /** Mounts every feature module under the API prefix. */
@@ -27,6 +31,10 @@ router.use("/messes/:messId/uploads", messUploadRoutes);
 router.use("/messes/:messId/bazars", bazarRoutes);
 router.use("/messes/:messId/bazar-duties", bazarDutyRoutes);
 router.use("/messes/:messId/deposits", depositRoutes);
+router.use("/messes/:messId/rooms", roomRoutes);
+router.use("/messes/:messId/staff", staffRoutes);
+router.use("/messes/:messId/expenses", expenseRoutes);
+router.use("/messes/:messId/charges", chargeRoutes);
 router.use("/messes", messRoutes);
 
 export default router;

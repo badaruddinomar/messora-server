@@ -1,10 +1,10 @@
 import { ApprovalStatus, MonthStatus, NotificationType, PaidFrom, Prisma } from "@prisma/client";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { audit } from "../../lib/audit.js";
-import { logger } from "../../lib/logger.js";
 import { notify } from "../../lib/notify.js";
 import { prisma, type DbClient } from "../../lib/prisma.js";
-import { belongsTo, storage } from "../../lib/storage/index.js";
+import { storage } from "../../lib/storage/index.js";
+import { assertReceipt, discardFile } from "../../lib/storage/receipts.js";
 import { hasManagerAccess, type Membership } from "../../middlewares/tenant.js";
 import { ApiError } from "../../utils/api-error.js";
 import { fromDbDate, toDbDate } from "../../utils/date.js";
@@ -111,15 +111,6 @@ const itemRows = (items: BazarItemInput[]) => {
   }));
 };
 
-async function assertReceipt(messId: string, key: string) {
-  if (!belongsTo(key, messId, "receipt") || !(await storage.stat(key))) {
-    throw ApiError.unprocessable(
-      "The receipt didn't finish uploading. Try adding it again.",
-      ERROR_CODES.RECEIPT_NOT_FOUND,
-    );
-  }
-}
-
 async function activeShopper(membership: Membership, shopperId: string | undefined) {
   const id = shopperId ?? membership.id;
   if (id !== membership.id && !hasManagerAccess(membership)) {
@@ -131,12 +122,6 @@ async function activeShopper(membership: Membership, shopperId: string | undefin
   });
   if (!shopper) throw ApiError.notFound("Member not found");
   return shopper;
-}
-
-/** Deleting a replaced receipt is best effort: a leftover file is harmless, a failed request isn't. */
-function discardFile(key: string | null) {
-  if (!key) return;
-  storage.delete(key).catch((err) => logger.warn({ err, key }, "Couldn't delete an old receipt"));
 }
 
 const findBazar = async (db: DbClient, messId: string, bazarId: string) => {

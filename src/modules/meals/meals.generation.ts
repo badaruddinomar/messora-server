@@ -1,6 +1,6 @@
-import { MemberStatus, MonthStatus, type Prisma } from "@prisma/client";
+import { MemberStatus, MonthStatus, type MessMonth, type Prisma } from "@prisma/client";
 import type { DbClient } from "../../lib/prisma.js";
-import { addDays, toDbDate, type DateString } from "../../utils/date.js";
+import { addDays, fromDbDate, todayIn, toDbDate, type DateString } from "../../utils/date.js";
 import { wasMemberOn } from "./meals.rules.js";
 
 /**
@@ -71,4 +71,22 @@ export function datesBetween(from: DateString, to: DateString) {
   const dates: DateString[] = [];
   for (let day = from; day <= to; day = addDays(day, 1)) dates.push(day);
   return dates;
+}
+
+/**
+ * Fills in a month's usual meals from its first day up to today (as opening a day would), so totals
+ * that depend on meals never wait for the worker. Closed months are left alone.
+ */
+export async function generateMonthToToday(
+  db: DbClient,
+  month: Pick<MessMonth, "messId" | "status" | "startDate" | "endDate">,
+) {
+  if (month.status !== MonthStatus.OPEN) return;
+  const { timezone } = await db.mess.findUniqueOrThrow({
+    where: { id: month.messId },
+    select: { timezone: true },
+  });
+  const today = todayIn(timezone);
+  const end = fromDbDate(month.endDate);
+  await generateMealEntries(db, month.messId, fromDbDate(month.startDate), today < end ? today : end);
 }
