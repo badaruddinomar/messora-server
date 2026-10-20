@@ -26,8 +26,8 @@
 | 2   | Mess & membership                                | ✅     |
 | 3   | Billing months                                   | ✅     |
 | 4   | Meals & daily menu                               | ✅     |
-| 5   | Bazar (groceries)                                | 🔜     |
-| 6   | Deposits                                         | ⬜     |
+| 5   | Bazar (groceries)                                | ✅     |
+| 6   | Deposits                                         | 🔜     |
 | 7   | Rooms, staff, shared expenses & charges          | ⬜     |
 | 8   | Month close & settlement                         | ⬜     |
 | 9   | Dashboards & reports                             | ⬜     |
@@ -169,23 +169,24 @@ Build the shared building blocks **before** features, so every later screen and 
 
 ---
 
-## Phase 5 — Bazar (groceries)
+## Phase 5 — Bazar (groceries) ✅
 
 ### Backend
 
-- [ ] File uploads (receipts first; reused for avatars and chat later): presigned uploads to object storage (see Open decisions), size and type limits
-- [ ] Bazar duty schedule: generate a rotation for the month, swap duties, mark done; reminder job (`BAZAR_DUTY_REMINDER`)
-- [ ] Bazar CRUD with items (`totalAmount` = sum of item prices, checked on the server), `paidFrom`, receipt
-- [ ] Approval flow: PENDING → APPROVED / REJECTED with a reason. When `requireBazarApproval` is off, entries are auto-approved.
-- [ ] Only the shopper or a manager can edit, and only while PENDING (managers can always edit)
-- [ ] Tests: totals, approval permissions, closed-month guard
+- [x] File uploads (receipts first; reused for avatars and chat later): `POST /messes/:messId/uploads` returns a short-lived signed PUT; `src/lib/storage` has a local driver (development, tests) and an S3-compatible driver (Cloudflare R2 in production); JPEG/PNG/WebP up to 5 MB; keys are stored, read URLs are signed
+- [x] Bazar duty schedule (`/bazar-duties`): plan a rotation for the month (every N days, 1–3 shoppers, turn order), add, move, reassign, swap, remove; members tick off their own; adding a bazar ticks off that day's duty; hourly reminder job at 08:00 mess time (`BAZAR_DUTY_REMINDER`)
+- [x] Bazar CRUD with items (`totalAmount` = sum of item prices, checked on the server) or a quick total, `paidFrom`, receipt, note
+- [x] Approval flow: PENDING → APPROVED / REJECTED with a reason; rejected bazars are fixed and resubmitted. Auto-approved when `requireBazarApproval` is off or a manager adds it.
+- [x] Only the creator or shopper edits, and only while PENDING or REJECTED (managers can always edit in an open month)
+- [x] List filters (month, status, shopper, paid from) with cursor pagination, and a month summary (approved, pending, by payment, by shopper)
+- [x] Tests: totals, approval permissions, closed-month guard, uploads, duty rotation, reminders
 
 ### Frontend
 
-- [ ] Add-bazar form with dynamic item rows (name, quantity, unit, price), a running total and a receipt photo (camera on mobile)
-- [ ] Bazar list with filters (status, shopper, date) kept in the URL with nuqs, and month totals
-- [ ] Approval queue for managers (approve or reject with a reason)
-- [ ] Duty calendar
+- [x] Add-bazar form: quick total or item rows (name, quantity, unit, price) with a running total, and a receipt photo (camera on mobile, shrunk in the browser, uploaded in the background)
+- [x] Bazar list with filters (status, shopper, payment) kept in the URL with nuqs, month totals and "who shopped"
+- [x] Approval queue for managers (approve, or reject with a reason)
+- [x] Duty board: plan a rotation, add, move, reassign, swap, mark done; "on duty today" banner on the overview
 
 **Done when:** a member can submit a bazar with a receipt from a phone in under 30 seconds, and a manager can approve it from the queue.
 
