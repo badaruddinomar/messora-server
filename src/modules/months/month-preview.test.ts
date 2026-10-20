@@ -1,6 +1,6 @@
 import { ApprovalStatus, MonthStatus, PaidFrom, SettlementDirection } from "@prisma/client";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { app } from "../../app.js";
 import { prisma } from "../../lib/prisma.js";
 import { addMember, authHeader, createMess, createSlots, createUser } from "../../test/factories.js";
@@ -8,6 +8,10 @@ import { addDays, toDbDate } from "../../utils/date.js";
 
 const preview = (messId: string, monthId: string, user: Parameters<typeof authHeader>[0]) =>
   request(app).get(`/api/v1/messes/${messId}/months/${monthId}/preview`).set(authHeader(user));
+
+/** These tests set every meal by hand, so usual meals mustn't be filled in on top. */
+const manualMeals = (messId: string) =>
+  prisma.messSetting.update({ where: { messId }, data: { autoGenerateMeals: false } });
 
 /** `count` days of one meal from Oct 1, for a member. */
 async function meals(
@@ -31,10 +35,19 @@ async function meals(
   });
 }
 
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-19T08:00:00Z"));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("GET /months/:monthId/preview", () => {
   it("prices meals, credits deposits and own-pocket bazar, and carries over last month's balance", async () => {
     const aUser = await createUser({ name: "Anis" });
     const { mess, ownerMember: a, month } = await createMess(aUser);
+    await manualMeals(mess.id);
     const bUser = await createUser({ name: "Bashir" });
     const cUser = await createUser({ name: "Chayan" });
     const b = await addMember(mess.id, bUser);
@@ -149,6 +162,7 @@ describe("GET /months/:monthId/preview", () => {
   it("splits meal costs to the paisa, and shares the bazar equally when nobody ate", async () => {
     const aUser = await createUser({ name: "A" });
     const { mess, ownerMember: a, month } = await createMess(aUser);
+    await manualMeals(mess.id);
     const b = await addMember(mess.id, await createUser({ name: "B" }));
     const c = await addMember(mess.id, await createUser({ name: "C" }));
     await prisma.bazar.create({
@@ -199,5 +213,14 @@ describe("GET /months/:monthId/preview", () => {
     const otherOwner = await createUser();
     const other = await createMess(otherOwner);
     expect((await preview(other.mess.id, month.id, otherOwner)).status).toBe(404);
+  });
+
+  it("fills in usual meals up to today before pricing them", async () => {
+    const owner = await createUser();
+    const { mess, month } = await createMess(owner);
+    await createSlots(mess.id); // ½ + 1 + 1 = 2.5 a day
+    const res = await preview(mess.id, month.id, owner);
+    // Oct 1–19 for the owner, who's been in the mess since the 1st.
+    expect(res.body.data.totals.totalMeals).toBe("47.5");
   });
 });

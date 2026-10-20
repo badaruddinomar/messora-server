@@ -1,7 +1,10 @@
+import { MonthStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import type { Membership } from "../../middlewares/tenant.js";
 import { ApiError } from "../../utils/api-error.js";
+import { fromDbDate, todayIn } from "../../utils/date.js";
 import type { Decimal } from "../../utils/money.js";
+import { generateMealEntries } from "../meals/meals.generation.js";
 import { calculateMonth } from "./month-calc.js";
 
 const money = (d: Decimal) => d.toFixed(2);
@@ -11,11 +14,20 @@ const money = (d: Decimal) => d.toFixed(2);
  * estimate until the month is closed (Phase 8); everyone in the mess can see it (BUSINESS_RULES §2).
  */
 export async function getMonthPreview(membership: Membership, monthId: string) {
-  const exists = await prisma.messMonth.findFirst({
-    where: { id: monthId, messId: membership.messId },
-    select: { id: true },
-  });
-  if (!exists) throw ApiError.notFound("Month not found");
+  const month = await prisma.messMonth.findFirst({ where: { id: monthId, messId: membership.messId } });
+  if (!month) throw ApiError.notFound("Month not found");
+
+  // Usual meals up to today are filled in first, as when a day is opened, so the meal rate never
+  // waits for the worker.
+  if (month.status === MonthStatus.OPEN) {
+    const { timezone } = await prisma.mess.findUniqueOrThrow({
+      where: { id: month.messId },
+      select: { timezone: true },
+    });
+    const today = todayIn(timezone);
+    const end = fromDbDate(month.endDate);
+    await generateMealEntries(prisma, month.messId, fromDbDate(month.startDate), today < end ? today : end);
+  }
   const calc = await calculateMonth(prisma, monthId);
 
   const people = new Map(
