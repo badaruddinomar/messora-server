@@ -1,3 +1,5 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { defineConfig } from "vitest/config";
 import { TEST_DATABASE_URL } from "./src/test/database-url";
 
@@ -17,6 +19,8 @@ export default defineConfig({
       JWT_ACCESS_SECRET: "test-secret-that-is-at-least-32-characters-long",
       MAIL_FROM_EMAIL: "test@messora.app",
       BREVO_API_KEY: "",
+      STORAGE_DRIVER: "local",
+      LOCAL_STORAGE_DIR: join(tmpdir(), "messora-test-uploads"),
     },
     coverage: {
       provider: "v8",

@@ -68,6 +68,16 @@ Planned modules: `auth`, `users`, `messes`, `members`, `invitations`, `rooms`, `
 - Add an index for every new filter or sort pattern on a large table (meal entries, messages, notifications).
 - Soft delete (`deletedAt`) for users and messes; hard delete elsewhere, with an audit log entry.
 
+### File storage
+
+- `src/lib/storage` hides where files live behind one `Storage` interface: `local` (disk, for development and tests)
+  or `s3` (any S3-compatible bucket; Cloudflare R2 in production), picked with `STORAGE_DRIVER`.
+- Uploads never stream through the API: `POST /messes/:messId/uploads` checks the type and size and returns a short-
+  lived signed `PUT` URL plus a `key`; the browser uploads straight to storage and then sends the `key` with the record
+  (e.g. a bazar's `receiptKey`). The service checks the key belongs to that mess and the file exists.
+- Store **keys**, never URLs. DTOs turn keys into short-lived read URLs (`storage.readUrl`). Buckets stay private.
+- The local driver serves `/files/...` with HMAC-signed URLs and checks the file's magic bytes.
+
 ## 6. Validation & security
 
 - Every route that takes input calls `validate({ body | query | params })`. Never trust `req.body` without it.

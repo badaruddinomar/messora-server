@@ -31,6 +31,8 @@
   },
   "homepage": "https://github.com/badaruddinomar/messora-server#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1153.0",
+    "@aws-sdk/s3-request-presigner": "^3.1153.0",
     "@date-fns/tz": "^1.5.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",

@@ -152,6 +152,21 @@ closingCash = openingCash
 - Only `APPROVED` entries count in any calculation. `PENDING` entries show in the close wizard as warnings.
 - Rejecting requires a reason. A rejected entry can be edited and resubmitted by its creator, which sets it back to `PENDING`.
 - The creator can edit an entry while it is `PENDING`. Managers can edit it in any state, as long as the month is `OPEN`.
+- Entries a manager adds are created `APPROVED` (they would approve them anyway).
+
+### Bazar
+
+- A bazar is dated today or earlier (`DATE_IN_FUTURE`) and belongs to the month containing that date.
+- An itemised bazar's `totalAmount` is the sum of its items, computed on the server; a total sent along must match
+  (`TOTAL_MISMATCH`). A quick bazar has no items, only a total.
+- Members add bazars for themselves; managers can record one for any active member, who is notified.
+- Pending bazars notify every manager (`BAZAR_SUBMITTED`); the shopper hears the decision (`BAZAR_APPROVED` /
+  `BAZAR_REJECTED`). Everyone in the mess can see every bazar.
+- Receipts are images (JPEG, PNG, WebP, at most 5 MB), stored privately and shown through short-lived links.
+- **Bazar duty:** managers plan a rotation for a month (a bazar day every N days, 1–3 members per day, taking turns in
+  a chosen order, skipping anyone not in the mess that day). Re-planning replaces duties from the start day on that
+  aren't done yet. Managers move, reassign, swap or remove duties; a member ticks off their own. Adding a bazar ticks
+  off the shopper's duty for that day. At 08:00 (mess time) members with undone duty today get one reminder.
 
 ## 11. Membership
 
